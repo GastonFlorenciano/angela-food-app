@@ -1,0 +1,85 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 1. Roles del Sistema
+enum Role {
+  ADMIN
+  CLIENTE
+}
+
+// 2. Estados del Pedido
+enum OrderStatus {
+  PENDIENTE
+  EN_PREPARACION
+  EN_CAMINO
+  ENTREGADO
+  CANCELADO
+}
+
+// 3. Tabla de Usuarios (Principalmente para el Administrador)
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  password  String
+  role      Role     @default(CLIENTE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 4. Tabla de Productos (Menú de comidas)
+model Product {
+  id          String      @id @default(uuid())
+  name        String
+  description String
+  price       Float
+  imageUrl    String?
+  category    String      // Ej: "Hamburguesas", "Bebidas", "Pizzas"
+  isAvailable Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orderItems  OrderItem[]
+}
+
+// 5. Tabla de Pedidos
+model Order {
+  id              String      @id @default(uuid())
+  orderNumber     Int         @unique @default(autoincrement()) // Un número más corto para cantar en la cocina (Ej: Pedido #1, #2...)
+  customerName    String
+  customerPhone   String
+  deliveryAddress String
+  deliveryZone    String
+  paymentMethod   String      // "EFECTIVO" o "TRANSFERENCIA"
+  notes           String?     // Aclaraciones/Notas del cliente (Ej: "Sin cebolla")
+  status          OrderStatus @default(PENDIENTE)
+  total           Float
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  items           OrderItem[]
+}
+
+// 6. Detalle de los productos de cada pedido
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Float    // Guardamos el precio del momento de la compra
+}
+
+// 7. Tabla de Reseñas / Feedback
+model Review {
+  id            String   @id @default(uuid())
+  customerName  String   @default("Anónimo")
+  rating        Int      // Puntuación del 1 al 5
+  comment       String
+  adminResponse String?  // Respuesta del gerente/encargado
+  createdAt     DateTime @default(now())
+}

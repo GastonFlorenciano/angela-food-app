@@ -1,65 +1,183 @@
-import Image from "next/image";
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { StarRating } from '@/components/ui/StarRating';
+import { Button } from '@/components/ui/Button';
+import { ChevronRight, ShoppingBag, Star, Truck, Clock, Heart } from 'lucide-react';
+
+interface MenuItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  imageUrl: string | null;
+}
+
+interface Feedback {
+  id: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+  clientName?: string;
+}
 
 export default function Home() {
+  const [featured, setFeatured] = useState<MenuItem[]>([]);
+  const [testimonials, setTestimonials] = useState<Feedback[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const menuRes = await fetch('/api/products');
+        if (menuRes.ok) {
+          const data = await menuRes.json();
+          setFeatured(data.slice(0, 6));
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <div>
+      {/* Hero */}
+      <section
+        className="relative min-h-[85vh] flex items-center justify-center text-center px-4"
+        style={{
+          backgroundImage: 'linear-gradient(135deg, #faf3e8 0%, #f4e4cc 50%, #fdf3ee 100%)',
+        }}
+      >
+        <div className="relative z-10 max-w-2xl mx-auto py-20">
+          <div className="w-fit bg-[#FAF1E8] rounded-full object-cover mx-auto shadow-lg mb-8 ring-4 ring-white ">
+            <img
+              src="/logo.jpeg"
+              alt="Angela Sabores de Barrio"
+              className="w-44 h-44 p-4 rounded-full"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
+          <h1 className="font-display text-5xl sm:text-6xl font-bold text-forest-700 leading-tight mb-4">
+            Sabores que<br />
+            <span className="text-terracotta-500">abrazan el alma</span>
+          </h1>
+          <p className="text-sage-600 text-lg mb-8 leading-relaxed">
+            Comida casera hecha con amor, ingredientes frescos y las recetas de siempre.<br />
+            Directo desde nuestra cocina hasta tu mesa.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/checkout">
+              <Button size="lg" variant="primary">
+                <ShoppingBag size={20} className="inline mr-2" />
+                Hacer un pedido
+              </Button>
+            </Link>
+            <Link href="/menu">
+              <Button size="lg" variant="outline">
+                Ver el menu completo
+                <ChevronRight size={20} className="inline ml-1" />
+              </Button>
+            </Link>
+          </div>
         </div>
-      </main>
+
+        {/* Decorative blobs */}
+        <div className="absolute top-10 right-10 w-64 h-64 bg-terracotta-100 rounded-full opacity-40 blur-3xl" />
+        <div className="absolute bottom-10 left-10 w-80 h-80 bg-sage-100 rounded-full opacity-30 blur-3xl" />
+      </section>
+
+      {/* Feature strip */}
+      <section className="bg-forest-700 text-white py-10 px-4">
+        <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {[
+            { icon: Heart, title: 'Hecho en casa', desc: 'Recetas tradicionales con ingredientes del barrio' },
+            { icon: Truck, title: 'Delivery y retiro', desc: 'Te lo llevamos o pasás a buscarlo cuando quieras' },
+            { icon: Clock, title: 'Siempre fresco', desc: 'Preparado al momento, nunca recalentado' },
+          ].map(({ icon: Icon, title, desc }) => (
+            <div key={title} className="flex items-start gap-4">
+              <div className="bg-terracotta-500/30 p-3 rounded-xl shrink-0">
+                <Icon size={22} className="text-terracotta-200" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white">{title}</h3>
+                <p className="text-sm text-cream-300 mt-0.5">{desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Featured menu */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+        <div className="flex items-end justify-between mb-8">
+          <div>
+            <p className="text-terracotta-500 text-sm font-medium uppercase tracking-wide mb-1">Lo más pedido</p>
+            <h2 className="font-display text-3xl font-bold text-forest-700">Nuestros favoritos</h2>
+          </div>
+          <Link href="/menu" className="text-sm text-terracotta-500 hover:text-terracotta-600 font-medium flex items-center gap-1">
+            Ver todo <ChevronRight size={16} />
+          </Link>
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="bg-cream-100 rounded-2xl h-72 animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {featured.map(item => (
+              <MenuCard key={item.id} item={item} />
+            ))}
+          </div>
+        )}
+
+        <div className="text-center mt-10">
+          <Link href="/checkout">
+            <Button size="lg" variant="primary">
+              <ShoppingBag size={20} className="inline mr-2" />
+              Pedí ahora
+            </Button>
+          </Link>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function MenuCard({ item }: { item: MenuItem }) {
+  return (
+    <div className="group bg-white rounded-2xl overflow-hidden shadow-sm border border-cream-200 hover:shadow-md hover:-translate-y-1 transition-all duration-200">
+      <div className="h-44 overflow-hidden bg-cream-100">
+        {item.imageUrl ? (
+          <img
+            src={item.imageUrl}
+            alt={item.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-cream-400">
+            <ShoppingBag size={40} />
+          </div>
+        )}
+      </div>
+      <div className="p-4">
+        <span className="text-xs font-medium text-terracotta-500 uppercase tracking-wide">{item.category}</span>
+        <h3 className="font-display font-semibold text-forest-700 mt-1 text-lg">{item.name}</h3>
+        <p className="text-sm text-sage-600 mt-1 line-clamp-2">{item.description}</p>
+        <div className="flex items-center justify-between mt-4">
+          <span className="font-bold text-terracotta-500 text-lg">${item.price.toLocaleString('es-AR')}</span>
+          <Link href="/checkout" className="text-xs font-medium text-sage-600 hover:text-terracotta-500 transition-colors">
+            Pedir →
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

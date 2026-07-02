@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { Input, Textarea, Select } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
-import { Plus, Search, Pencil, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { PlusCircle, Edit2, Trash2, Check, X, Image as ImageIcon } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -16,22 +15,21 @@ interface Product {
   isAvailable: boolean;
 }
 
-const EMPTY_ITEM = {
-  name: '', description: '', price: 0, category: 'Hamburguesas', imageUrl: '', isAvailable: true,
-};
-
-const MENU_CATEGORIES = ['Hamburguesas', 'Pizzas', 'Acompañamientos', 'Bebidas'];
+const CATEGORIES = ['Regionales', 'Empanadas', 'Pizzas', 'Chipá', 'Sándwiches'];
 
 export default function AdminMenu() {
-  const [items, setItems] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState('Todos');
   const [modalOpen, setModalOpen] = useState(false);
-  const [editItem, setEditItem] = useState<Product | null>(null);
-  const [form, setForm] = useState(EMPTY_ITEM);
-  const [saving, setSaving] = useState(false);
-  const [formErrors, setFormErrors] = useState<Partial<Record<string, string>>>({});
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  // Formulario de estado
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
+  const [category, setCategory] = useState(CATEGORIES[0]);
+  const [imageUrl, setImageUrl] = useState('');
+  const [isAvailable, setIsAvailable] = useState(true);
 
   async function loadProducts() {
     setLoading(true);
@@ -39,10 +37,10 @@ export default function AdminMenu() {
       const res = await fetch('/api/products');
       if (res.ok) {
         const data = await res.json();
-        setItems(data);
+        setProducts(data);
       }
-    } catch (error) {
-      console.error(error);
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
@@ -50,195 +48,186 @@ export default function AdminMenu() {
 
   useEffect(() => { loadProducts(); }, []);
 
-  function openCreate() {
-    setEditItem(null);
-    setForm(EMPTY_ITEM);
-    setFormErrors({});
+  function openCreateModal() {
+    setSelectedProduct(null);
+    setName('');
+    setDescription('');
+    setPrice('');
+    setCategory(CATEGORIES[0]);
+    setImageUrl('');
+    setIsAvailable(true);
     setModalOpen(true);
   }
 
-  function openEdit(item: Product) {
-    setEditItem(item);
-    setForm({
-      name: item.name,
-      description: item.description,
-      price: item.price,
-      category: item.category,
-      imageUrl: item.imageUrl || '',
-      isAvailable: item.isAvailable,
-    });
-    setFormErrors({});
+  function openEditModal(product: Product) {
+    setSelectedProduct(product);
+    setName(product.name);
+    setDescription(product.description);
+    setPrice(product.price.toString());
+    setCategory(product.category);
+    setImageUrl(product.imageUrl || '');
+    setIsAvailable(product.isAvailable);
     setModalOpen(true);
   }
 
-  async function save() {
-    if (!form.name.trim()) {
-      setFormErrors({ name: 'El nombre es obligatorio' });
-      return;
-    }
-    setSaving(true);
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const payload = { name, description, price: parseFloat(price), category, imageUrl, isAvailable };
+
     try {
-      const method = editItem ? 'PUT' : 'POST';
-      const url = editItem ? `/api/products/${editItem.id}` : '/api/products';
-      
+      const url = selectedProduct ? `/api/products/${selectedProduct.id}` : '/api/products';
+      const method = selectedProduct ? 'PUT' : 'POST';
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload)
       });
 
       if (res.ok) {
-        loadProducts();
         setModalOpen(false);
+        loadProducts();
+      }
+    } catch (e) {
+      alert('Error al guardar el producto');
+    }
+  }
+
+  async function toggleAvailability(id: string, current: boolean) {
+    try {
+      const res = await fetch(`/api/products/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isAvailable: !current })
+      });
+      if (res.ok) {
+        setProducts(prev => prev.map(p => p.id === id ? { ...p, isAvailable: !current } : p));
       }
     } catch (e) {
       console.error(e);
-    } finally {
-      setSaving(false);
     }
   }
 
-  async function toggleAvailable(item: Product) {
+  async function handleDelete(id: string) {
+    if (!confirm('¿Seguro que querés eliminar permanentemente este plato?')) return;
     try {
-      await fetch(`/api/products/${item.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isAvailable: !item.isAvailable }),
-      });
-      setItems(prev => prev.map(i => i.id === item.id ? { ...i, isAvailable: !i.isAvailable } : i));
-    } catch (error) {
-      console.error(error);
+      const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+      if (res.ok) loadProducts();
+    } catch (e) {
+      console.error(e);
     }
   }
-
-  async function deleteItem(item: Product) {
-    if (!confirm(`¿Eliminar "${item.name}"?`)) return;
-    try {
-      await fetch(`/api/products/${item.id}`, { method: 'DELETE' });
-      setItems(prev => prev.filter(i => i.id !== item.id));
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-  const filtered = items.filter(i => {
-    const matchCat = activeCategory === 'Todos' || i.category === activeCategory;
-    const q = search.toLowerCase();
-    return matchCat && (!q || i.name.toLowerCase().includes(q) || i.description.toLowerCase().includes(q));
-  });
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-6 max-w-7xl mx-auto bg-white text-slate-800 min-h-screen">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Menú</h1>
-          <p className="text-gray-500 mt-0.5">{items.length} platos registrados</p>
+          <h1 className="font-display text-3xl font-black text-slate-900">Carta de Productos</h1>
+          <p className="text-slate-500 mt-1">Agregá, editá precios o pausá la disponibilidad del menú.</p>
         </div>
-        <Button variant="primary" onClick={openCreate} className="flex items-center gap-1">
-          <Plus size={16} /> Agregar plato
+        <Button onClick={openCreateModal} className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white font-bold">
+          <PlusCircle size={16} /> Agregar Nuevo Plato
         </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-5">
-        <div className="relative flex-1">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar plato..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none bg-white shadow-sm"
-          />
-        </div>
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {['Todos', ...MENU_CATEGORIES].map(cat => (
-            <button key={cat} onClick={() => setActiveCategory(cat)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${activeCategory === cat ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
-            >{cat}</button>
+      {loading ? (
+        <div className="p-12 text-center text-slate-500 animate-pulse font-medium">Sincronizando menú con la base de datos...</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {products.map(product => (
+            <div key={product.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col justify-between">
+              
+              {/* Contenedor de la Imagen */}
+              <div className="relative h-48 bg-gray-100 w-full border-b border-gray-100">
+                <img
+                  src={product.imageUrl || '/assets/placeholder/pizzas.jpg'}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/assets/placeholder/pizzas.jpg';
+                  }}
+                />
+                <span className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-[11px] font-black tracking-wide uppercase shadow-sm text-slate-700">
+                  {product.category}
+                </span>
+              </div>
+
+              {/* Contenido descriptivo */}
+              <div className="p-5 flex-1 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-bold text-lg text-slate-900 leading-tight">{product.name}</h3>
+                  <span className="font-black text-orange-600 text-lg shrink-0">${product.price.toLocaleString('es-AR')}</span>
+                </div>
+                <p className="text-sm text-slate-500 line-clamp-2 font-medium">{product.description || 'Sin descripción cargada.'}</p>
+              </div>
+
+              {/* Botonera inferior */}
+              <div className="px-5 pb-5 pt-2 flex items-center justify-between border-t border-gray-50 bg-gray-50/30">
+                <button
+                  onClick={() => toggleAvailability(product.id, product.isAvailable)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+                    product.isAvailable
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                      : 'bg-red-50 border-red-200 text-red-700'
+                  }`}
+                >
+                  {product.isAvailable ? <><Check size={14} /> Disponible</> : <><X size={14} /> Sin Stock</>}
+                </button>
+
+                <div className="flex gap-2">
+                  <button onClick={() => openEditModal(product)} className="p-2 text-slate-500 hover:text-orange-600 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200 bg-white shadow-sm">
+                    <Edit2 size={15} />
+                  </button>
+                  <button onClick={() => handleDelete(product.id)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors border border-gray-200 bg-white shadow-sm">
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+
+            </div>
           ))}
         </div>
-      </div>
+      )}
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-gray-400 animate-pulse">Cargando platos...</div>
-        ) : filtered.length === 0 ? (
-          <div className="p-12 text-center text-gray-400">No se encontraron platos.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-gray-50 border-b border-gray-100 text-gray-600 font-medium">
-                <tr>
-                  <th className="px-4 py-3">Plato</th>
-                  <th className="px-4 py-3">Categoría</th>
-                  <th className="px-4 py-3">Precio</th>
-                  <th className="px-4 py-3">Disponible</th>
-                  <th className="px-4 py-3">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50 text-gray-700">
-                {filtered.map(item => (
-                  <tr key={item.id} className={`hover:bg-gray-50/50 ${!item.isAvailable ? 'opacity-50' : ''}`}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        {item.imageUrl ? (
-                          <img src={item.imageUrl} alt={item.name} className="w-10 h-10 rounded-lg object-cover shrink-0" />
-                        ) : (
-                          <div className="w-10 h-10 rounded-lg bg-gray-100 shrink-0" />
-                        )}
-                        <div>
-                          <p className="font-medium text-gray-800">{item.name}</p>
-                          <p className="text-xs text-gray-400 line-clamp-1">{item.description}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{item.category}</span>
-                    </td>
-                    <td className="px-4 py-3 font-medium text-orange-600">${item.price}</td>
-                    <td className="px-4 py-3">
-                      <button onClick={() => toggleAvailable(item)}>
-                        {item.isAvailable
-                          ? <ToggleRight size={24} className="text-green-500" />
-                          : <ToggleLeft size={24} className="text-gray-300" />
-                        }
-                      </button>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1.5">
-                        <button onClick={() => openEdit(item)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                          <Pencil size={14} />
-                        </button>
-                        <button onClick={() => deleteItem(item)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Modal de Alta y Edición */}
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={selectedProduct ? 'Editar Plato' : 'Cargar Nuevo Plato a la Carta'} size="md">
+        <form onSubmit={handleSubmit} className="space-y-4 text-slate-800">
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Nombre del Plato</label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} required className="w-full px-4 py-2 rounded-xl border border-gray-300 text-sm focus:outline-none font-medium bg-white" placeholder="Ej: Pizza Napolitana Especial" />
           </div>
-        )}
-      </div>
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editItem ? 'Editar plato' : 'Agregar plato'} size="md">
-        <div className="space-y-4">
-          <Input label="Nombre *" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} error={formErrors.name} />
-          <Textarea label="Descripción" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows={3} />
-          <Input label="Precio *" type="number" value={String(form.price)} onChange={e => setForm(p => ({ ...p, price: Number(e.target.value) }))} />
-          <Select
-            label="Categoría"
-            value={form.category}
-            onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
-            options={MENU_CATEGORIES.map(c => ({ value: c, label: c }))}
-          />
-          <Input label="URL de imagen" value={form.imageUrl} onChange={e => setForm(p => ({ ...p, imageUrl: e.target.value }))} />
-          <div className="flex gap-3 pt-2">
-            <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button variant="primary" className="flex-1" loading={saving} onClick={save}>Aceptar</Button>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Precio ($)</label>
+              <input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} required className="w-full px-4 py-2 rounded-xl border border-gray-300 text-sm focus:outline-none font-medium bg-white" placeholder="15000" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Categoría</label>
+              <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-4 py-2 rounded-xl border border-gray-300 text-sm focus:outline-none font-bold bg-white h-[38px]">
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
           </div>
-        </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">URL de la Imagen (Opcional)</label>
+            <div className="relative">
+              <ImageIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input type="text" value={imageUrl} onChange={e => setImageUrl(e.target.value)} className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-300 text-sm focus:outline-none font-medium bg-white" placeholder="Dejar vacío para usar foto inteligente de la categoría" />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Ingredientes / Descripción</label>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full px-4 py-2 rounded-xl border border-gray-300 text-sm focus:outline-none font-medium bg-white resize-none" placeholder="Detallá los ingredientes para que el cliente los vea al comprar..." />
+          </div>
+
+          <div className="pt-4 border-t border-gray-100 flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setModalOpen(false)} className="border-gray-300 font-bold">Cancelar</Button>
+            <Button type="submit" className="bg-orange-600 hover:bg-orange-700 text-white font-bold px-5">Guardar Cambios</Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { StarRating } from '@/components/ui/StarRating';
 import { Button } from '@/components/ui/Button';
 import { ChevronRight, ShoppingBag, Star, Truck, Clock, Heart } from 'lucide-react';
+import { getPlaceholderImage } from '@/utils/images';
 
 interface MenuItem {
   id: string;
@@ -34,6 +35,7 @@ export default function Home() {
         const menuRes = await fetch('/api/products');
         if (menuRes.ok) {
           const data = await menuRes.json();
+          // Muestra solo los primeros 6 destacados
           setFeatured(data.slice(0, 6));
         }
       } catch (error) {
@@ -152,25 +154,32 @@ export default function Home() {
 }
 
 function MenuCard({ item }: { item: MenuItem }) {
+  // Resolvemos la imagen local si es null en la base de datos
+  const displayImage = item.imageUrl || getPlaceholderImage(item.category);
+
   return (
     <div className="group bg-white rounded-2xl overflow-hidden shadow-sm border border-cream-200 hover:shadow-md hover:-translate-y-1 transition-all duration-200">
-      <div className="h-44 overflow-hidden bg-cream-100">
-        {item.imageUrl ? (
+      <div className="h-44 overflow-hidden bg-cream-50 flex items-center justify-center text-cream-400 border-b border-cream-100 relative">
+        {displayImage ? (
           <img
-            src={item.imageUrl}
+            src={displayImage}
             alt={item.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              // Si la URL falla, oculta la etiqueta para forzar el icono genérico
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-cream-400">
-            <ShoppingBag size={40} />
+          <div className="flex flex-col items-center gap-1 select-none">
+            <ShoppingBag size={36} className="text-cream-300" />
           </div>
         )}
       </div>
       <div className="p-4">
         <span className="text-xs font-medium text-terracotta-500 uppercase tracking-wide">{item.category}</span>
         <h3 className="font-display font-semibold text-forest-700 mt-1 text-lg">{item.name}</h3>
-        <p className="text-sm text-sage-600 mt-1 line-clamp-2">{item.description}</p>
+        <p className="text-sm text-sage-600 mt-1 line-clamp-2">{item.description || 'Receta de barrio preparada al momento.'}</p>
         <div className="flex items-center justify-between mt-4">
           <span className="font-bold text-terracotta-500 text-lg">${item.price.toLocaleString('es-AR')}</span>
           <Link href="/checkout" className="text-xs font-medium text-sage-600 hover:text-terracotta-500 transition-colors">

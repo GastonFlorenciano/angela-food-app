@@ -115,33 +115,41 @@ export default function Checkout() {
   async function submitOrder() {
     if (!validateClient()) return;
     setLoading(true);
-    
-    // Armamos el payload para enviarlo a nuestra futura API de pedidos
+
     const orderPayload = {
       customerName: client.name,
       customerPhone: client.phone,
-      deliveryAddress: client.address || 'Retiro en local',
-      deliveryZone: client.neighborhood || '-',
+      deliveryAddress: deliveryType === 'delivery' ? client.address : 'Retiro en local',
+      deliveryZone: deliveryType === 'delivery' ? client.neighborhood : '-',
       paymentMethod: client.paymentMethod,
       notes: client.notes,
       total: total,
       items: cart.map(item => ({
-        productId: item.id,
+        id: item.id,
+        name: item.name,
         quantity: item.quantity,
-        price: item.price
+        price: item.price,
+        subtotal: item.subtotal
       }))
     };
 
     try {
-      // TODO: Por ahora mockeamos la respuesta exitosa. En la próxima fase conectaremos esto con POST /api/orders
-      console.log('Enviando pedido:', orderPayload);
-      
-      // Simulamos la creación de un número de pedido
-      const fakeOrderNum = `ORD-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
-      setOrderNumber(fakeOrderNum);
-      setStep('success');
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderPayload)
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setOrderNumber(data.orderNumber);
+        setStep('success');
+      } else {
+        throw new Error(data.error);
+      }
     } catch (error) {
-      alert('Hubo un error al enviar el pedido. Por favor intentá de nuevo.');
+      alert('Hubo un error al enviar el pedido al servidor. Por favor intentá de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -189,11 +197,10 @@ export default function Checkout() {
           { id: 'confirm', label: '3. Confirmar' },
         ].map(({ id, label }, idx) => (
           <div key={id} className="flex items-center gap-2 shrink-0">
-            <div className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-              step === id ? 'bg-orange-500 text-white' :
-              (step === 'client' && idx === 0) || (step === 'confirm' && idx <= 1) ? 'bg-gray-200 text-gray-600' :
-              'bg-gray-100 text-gray-400'
-            }`}>{label}</div>
+            <div className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${step === id ? 'bg-orange-500 text-white' :
+                (step === 'client' && idx === 0) || (step === 'confirm' && idx <= 1) ? 'bg-gray-200 text-gray-600' :
+                  'bg-gray-100 text-gray-400'
+              }`}>{label}</div>
             {idx < 2 && <ChevronRight size={14} className="text-gray-300" />}
           </div>
         ))}
@@ -206,9 +213,8 @@ export default function Checkout() {
             <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
               {categories.map(cat => (
                 <button key={cat} onClick={() => setActiveCategory(cat)}
-                  className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-                    activeCategory === cat ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:border-orange-200'
-                  }`}
+                  className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-all ${activeCategory === cat ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:border-orange-200'
+                    }`}
                 >{cat}</button>
               ))}
             </div>
@@ -308,9 +314,8 @@ export default function Checkout() {
                   <button
                     key={type}
                     onClick={() => setDeliveryType(type)}
-                    className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
-                      deliveryType === type ? 'border-orange-400 bg-orange-50 text-orange-600' : 'border-gray-200 text-gray-500 hover:border-orange-200'
-                    }`}
+                    className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${deliveryType === type ? 'border-orange-400 bg-orange-50 text-orange-600' : 'border-gray-200 text-gray-500 hover:border-orange-200'
+                      }`}
                   >
                     {type === 'delivery' ? 'Delivery' : 'Retiro en local'}
                   </button>
@@ -320,7 +325,7 @@ export default function Checkout() {
 
             <Input label="Nombre completo *" value={client.name} onChange={e => setClient(p => ({ ...p, name: e.target.value }))} placeholder="Ej: María García" error={errors.name} />
             <Input label="Teléfono *" type="tel" value={client.phone} onChange={e => setClient(p => ({ ...p, phone: e.target.value }))} placeholder="Ej: 3704123456" error={errors.phone} />
-            
+
             {deliveryType === 'delivery' && (
               <>
                 <Input label="Dirección *" value={client.address} onChange={e => setClient(p => ({ ...p, address: e.target.value }))} placeholder="Calle y número" error={errors.address} />

@@ -53,7 +53,7 @@ export default function AdminLogin() {
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center bg-gray-50 px-4 sm:px-6">
-      <div className="max-w-md w-full space-y-6 bg-white p-8 rounded-2xl border border-gray-200 shadow-sm animate-fadeIn">
+      <div className="max-w-md w-full space-y-6 bg-cream-200/50 p-8 rounded-2xl shadow-lg animate-fadeIn">
 
         {/* Cabecera */}
         <div className="text-center space-y-2">
@@ -77,7 +77,7 @@ export default function AdminLogin() {
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-gray-300 text-sm text-slate-900 focus:outline-none bg-white font-medium"
+                className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-gray-300 text-sm text-slate-900 focus:outline-cream-500 bg-white font-medium"
               />
             </div>
           </div>
@@ -90,7 +90,7 @@ export default function AdminLogin() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-gray-300 text-sm text-slate-900 focus:outline-none bg-white font-medium"
+                className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-gray-300 text-sm text-slate-900 focus:outline-cream-500 bg-white font-medium"
               />
               <button
                 type="button"

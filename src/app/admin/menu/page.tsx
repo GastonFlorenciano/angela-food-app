@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ImageUpload } from '@/components/ui/ImageUpload';
-import { PlusCircle, Edit2, Trash2, Check, X, Utensils } from 'lucide-react';
+import { PlusCircle, Edit2, Trash2, Check, X, Utensils, Star } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -14,11 +14,11 @@ interface Product {
   category: string;
   imageUrl: string | null;
   isAvailable: boolean;
+  isFeatured: boolean;
 }
 
 const CATEGORIES = ['Regionales', 'Empanadas', 'Pizzas', 'Chipá', 'Sándwiches'];
 
-// Componente pequeño para cada tarjeta de producto
 function ProductCard({ product, toggleAvailability, openEditModal, handleDelete }: { 
   product: Product, 
   toggleAvailability: (id: string, current: boolean) => void,
@@ -28,7 +28,13 @@ function ProductCard({ product, toggleAvailability, openEditModal, handleDelete 
   const [imageError, setImageError] = useState(false);
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col justify-between">
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col justify-between relative">
+      {product.isFeatured && (
+        <div className="absolute top-3 right-3 z-10 bg-amber-500 text-white p-1.5 rounded-full shadow-md flex items-center justify-center">
+          <Star size={14} className="fill-white" />
+        </div>
+      )}
+
       <div className="relative h-48 w-full bg-gray-100 flex items-center justify-center border-b border-gray-100 overflow-hidden">
         {!imageError ? (
           <img
@@ -74,10 +80,10 @@ function ProductCard({ product, toggleAvailability, openEditModal, handleDelete 
         </button>
 
         <div className="flex gap-2">
-          <button onClick={() => openEditModal(product)} className="p-2 text-slate-500 hover:text-orange-600 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200 bg-white shadow-sm">
+          <button onClick={() => openEditModal(product)} className="p-2 text-slate-500 hover:text-orange-600 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200 bg-white shadow-sm cursor-pointer">
             <Edit2 size={15} />
           </button>
-          <button onClick={() => handleDelete(product.id)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors border border-gray-200 bg-white shadow-sm">
+          <button onClick={() => handleDelete(product.id)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors border border-gray-200 bg-white shadow-sm cursor-pointer">
             <Trash2 size={15} />
           </button>
         </div>
@@ -97,8 +103,13 @@ export default function AdminMenu() {
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [isAvailable, setIsAvailable] = useState(true);
+  const [isFeatured, setIsFeatured] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+
+  // Estados nuevos para controlar la creación de categorías personalizadas
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [customCategory, setCustomCategory] = useState('');
 
   async function loadProducts() {
     setLoading(true);
@@ -114,19 +125,51 @@ export default function AdminMenu() {
   useEffect(() => { loadProducts(); }, []);
 
   function openCreateModal() {
-    setSelectedProduct(null); setName(''); setDescription(''); setPrice(''); setCategory(CATEGORIES[0]); setIsAvailable(true); setImageFile(null); setCurrentImageUrl(null); setModalOpen(true);
+    setSelectedProduct(null); setName(''); setDescription(''); setPrice(''); 
+    setCategory(CATEGORIES[0]); setIsCustomCategory(false); setCustomCategory('');
+    setIsAvailable(true); setIsFeatured(false); setImageFile(null); setCurrentImageUrl(null); setModalOpen(true);
   }
 
   function openEditModal(product: Product) {
-    setSelectedProduct(product); setName(product.name); setDescription(product.description); setPrice(product.price.toString()); setCategory(product.category); setIsAvailable(product.isAvailable); setImageFile(null); setCurrentImageUrl(product.imageUrl); setModalOpen(true);
+    setSelectedProduct(product); setName(product.name); setDescription(product.description); setPrice(product.price.toString()); 
+    setIsAvailable(product.isAvailable); setIsFeatured(product.isFeatured || false); setImageFile(null); setCurrentImageUrl(product.imageUrl);
+    
+    // Si la categoría del producto no está en la lista fija, activamos el input personalizado
+    if (CATEGORIES.includes(product.category)) {
+      setCategory(product.category);
+      setIsCustomCategory(false);
+      setCustomCategory('');
+    } else {
+      setCategory('NUEVA');
+      setIsCustomCategory(true);
+      setCustomCategory(product.category);
+    }
+    
+    setModalOpen(true);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsSaving(true);
+    
+    // Determinamos qué texto de categoría enviar
+    const finalCategory = isCustomCategory ? customCategory.trim() : category;
+
+    if (isCustomCategory && !customCategory.trim()) {
+      alert('Por favor, escribe el nombre de la nueva categoría.');
+      setIsSaving(false);
+      return;
+    }
+
     try {
       const formData = new FormData();
-      formData.append('name', name); formData.append('description', description); formData.append('price', price); formData.append('category', category); formData.append('isAvailable', String(isAvailable));
+      formData.append('name', name); 
+      formData.append('description', description); 
+      formData.append('price', price); 
+      formData.append('category', finalCategory); // Enviamos la categoría resuelta
+      formData.append('isAvailable', String(isAvailable));
+      formData.append('isFeatured', String(isFeatured));
+      
       if (imageFile) formData.append('image', imageFile);
       const url = selectedProduct ? `/api/products/${selectedProduct.id}` : '/api/products';
       const method = selectedProduct ? 'PUT' : 'POST';
@@ -163,11 +206,56 @@ export default function AdminMenu() {
         <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-6">
           <div className="md:w-1/2"><ImageUpload onImageSelect={setImageFile} currentImage={currentImageUrl} /></div>
           <div className="md:w-1/2 space-y-4">
-            <input type="text" value={name} onChange={e => setName(e.target.value)} required className="w-full px-4 py-2 rounded-xl border border-gray-300" placeholder="Nombre" />
-            <input type="number" value={price} onChange={e => setPrice(e.target.value)} required className="w-full px-4 py-2 rounded-xl border border-gray-300" placeholder="Precio" />
-            <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-4 py-2 rounded-xl border border-gray-300">{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full px-4 py-2 rounded-xl border border-gray-300" placeholder="Descripción" />
-            <Button type="submit" loading={isSaving} className="w-full bg-orange-600">Guardar</Button>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} required className="w-full px-4 py-2 rounded-xl border border-gray-300 text-sm" placeholder="Nombre" />
+            <input type="number" value={price} onChange={e => setPrice(e.target.value)} required className="w-full px-4 py-2 rounded-xl border border-gray-300 text-sm" placeholder="Precio" />
+            
+            {/* Lógica del selector de categorías condicional */}
+            <div className="space-y-2">
+              <select 
+                value={isCustomCategory ? 'NUEVA' : category} 
+                onChange={e => {
+                  if (e.target.value === 'NUEVA') {
+                    setIsCustomCategory(true);
+                  } else {
+                    setIsCustomCategory(false);
+                    setCategory(e.target.value);
+                  }
+                }} 
+                className="w-full px-4 py-2 rounded-xl border border-gray-300 text-sm bg-white"
+              >
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                <option value="NUEVA" className="text-orange-600 font-bold">+ Otra categoría...</option>
+              </select>
+
+              {/* Si seleccionó "+ Otra categoría...", se renderiza este input de texto libre */}
+              {isCustomCategory && (
+                <input 
+                  type="text" 
+                  value={customCategory} 
+                  onChange={e => setCustomCategory(e.target.value)} 
+                  required
+                  className="w-full px-4 py-2 rounded-xl border-2 border-orange-200 focus:border-orange-500 text-sm bg-orange-50/10 placeholder-gray-400" 
+                  placeholder="Escribí el nombre de la nueva categoría (Ej: Lomitos)" 
+                />
+              )}
+            </div>
+
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full px-4 py-2 rounded-xl border border-gray-300 text-sm" placeholder="Descripción" />
+            
+            <div className="flex items-center gap-3 bg-gray-50 p-3.5 rounded-xl border border-gray-200 select-none">
+              <input
+                type="checkbox"
+                id="isFeatured"
+                checked={isFeatured}
+                onChange={e => setIsFeatured(e.target.checked)}
+                className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500 cursor-pointer"
+              />
+              <label htmlFor="isFeatured" className="text-xs font-bold text-slate-700 cursor-pointer">
+                Destacar plato en la página de inicio
+              </label>
+            </div>
+
+            <Button type="submit" loading={isSaving} className="w-full bg-orange-600 hover:bg-orange-700 font-bold">Guardar</Button>
           </div>
         </form>
       </Modal>

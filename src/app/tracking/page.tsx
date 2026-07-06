@@ -112,7 +112,6 @@ function TrackingContent() {
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 min-h-[80vh] bg-white text-slate-800">
       <div className="mb-8">
-        <p className="text-orange-600 text-sm font-bold uppercase tracking-wide mb-1">Angela</p>
         <h1 className="font-display text-4xl font-extrabold text-slate-900">Seguir mi pedido</h1>
         <p className="text-slate-600 mt-2">Ingresá el número de pedido para ver el estado en vivo.</p>
       </div>

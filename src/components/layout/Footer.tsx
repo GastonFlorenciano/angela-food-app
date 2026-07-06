@@ -1,9 +1,17 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Heart, Phone, MapPin, Clock } from 'lucide-react';
 
 export function Footer() {
+  const pathname = usePathname();
+
+  // Si la ruta actual empieza con /admin, no renderizamos el footer
+  if (pathname.startsWith('/admin')) {
+    return null;
+  }
+
   return (
     <footer className="bg-forest-700 text-cream-100 mt-20 border border-t shadow-lg">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">

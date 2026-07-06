@@ -56,6 +56,10 @@ export async function POST(request: Request) {
     const category = formData.get('category') as string;
     const isAvailableStr = formData.get('isAvailable') as string;
     
+    // [MODIFICADO] Extraemos el estado del checkbox enviado desde el cliente
+    const isFeaturedStr = formData.get('isFeatured') as string;
+    const isFeatured = isFeaturedStr === 'true';
+    
     // 3. Extraemos el archivo físico de la imagen
     const imageFile = formData.get('image') as File | null;
 
@@ -78,6 +82,7 @@ export async function POST(request: Request) {
         category,
         imageUrl: finalImageUrl,
         isAvailable: isAvailableStr === 'true',
+        isFeatured: isFeatured, // [NUEVO] Guardamos el booleano en Neon
       },
     });
 

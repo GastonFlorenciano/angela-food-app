@@ -39,8 +39,9 @@ model Product {
   description String
   price       Float
   imageUrl    String?
-  category    String // Ej: "Hamburguesas", "Bebidas", "Pizzas"
+  category    String      // Ej: "Hamburguesas", "Bebidas", "Pizzas"
   isAvailable Boolean     @default(true)
+  isFeatured  Boolean     @default(false) // <- NUEVO CAMPO PARA LOS PLATOS DESTACADOS
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   orderItems  OrderItem[]
@@ -49,13 +50,13 @@ model Product {
 // 5. Tabla de Pedidos
 model Order {
   id              String      @id @default(uuid())
-  orderNumber     Int         @unique @default(autoincrement()) // Un número más corto para cantar en la cocina (Ej: Pedido #1, #2...)
+  orderNumber     Int         @unique @default(autoincrement())
   customerName    String
   customerPhone   String
   deliveryAddress String
   deliveryZone    String
-  paymentMethod   String // "EFECTIVO" o "TRANSFERENCIA"
-  notes           String? // Aclaraciones/Notas del cliente (Ej: "Sin cebolla")
+  paymentMethod   String
+  notes           String?
   status          OrderStatus @default(PENDIENTE)
   total           Float
   createdAt       DateTime    @default(now())
@@ -71,7 +72,7 @@ model OrderItem {
   productId String
   product   Product @relation(fields: [productId], references: [id])
   quantity  Int
-  price     Float // Guardamos el precio del momento de la compra
+  price     Float
 }
 
 // 7. Tabla de Reseñas / Feedback

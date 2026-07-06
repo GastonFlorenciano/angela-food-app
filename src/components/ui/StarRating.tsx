@@ -23,7 +23,7 @@ export function StarRating({ value, onChange, readonly = false, size = 'md' }: S
         >
           <Star
             size={px}
-            className={star <= value ? 'text-amber-400 fill-amber-400' : 'text-cream-300 fill-cream-300'}
+            className={star <= value ? 'text-amber-400 fill-amber-400' : 'text-cream-300 fill-white'}
           />
         </button>
       ))}

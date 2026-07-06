@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link'; // Importamos Link para redireccionar al carrito
 import { Button } from '@/components/ui/Button';
 import { ShoppingBag, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getPlaceholderImage } from '@/utils/images';
@@ -95,7 +96,8 @@ export default function ClientMenu() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 bg-white text-slate-800 min-h-screen">
       {/* Encabezado Principal */}
       <div className="mb-8">
-        <h1 className="font-display text-4xl font-extrabold text-slate-900">Nuestro Menú</h1>
+        {/* Cambiado a la clase font-serif y color oficial de títulos forest-700 */}
+        <h1 className="font-serif text-4xl font-bold text-forest-700">Nuestro Menú</h1>
         <p className="text-slate-500 mt-2">Todos nuestros platos preparados con amor y los mejores ingredientes.</p>
       </div>
 
@@ -120,7 +122,7 @@ export default function ClientMenu() {
               onClick={() => handleCategoryChange(cat)}
               className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all duration-300 ${
                 selectedCategory === cat
-                  ? 'bg-orange-600 border-orange-600 text-white shadow-sm scale-105'
+                  ? 'bg-terracotta-500 border-terracotta-500 text-white shadow-sm scale-105' // Usamos terracotta oficial
                   : 'bg-white border-gray-200 text-slate-700 hover:bg-gray-50'
               }`}
             >
@@ -162,7 +164,7 @@ export default function ClientMenu() {
                     ) : (
                       <div className="flex flex-col items-center gap-2 select-none">
                         <ShoppingBag size={40} className="stroke-[1.5] text-slate-300" />
-                        <span className="text-[11px] font-bold tracking-wider uppercase text-slate-400 font-display">Ángela</span>
+                        <span className="text-[11px] font-bold tracking-wider uppercase text-slate-400 font-cursive">Ángela</span>
                       </div>
                     )}
                     <span className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-[10px] font-black tracking-wide uppercase shadow-sm text-slate-700 border border-gray-100">
@@ -174,17 +176,21 @@ export default function ClientMenu() {
                   <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                     <div className="space-y-2">
                       <div className="flex items-start justify-between gap-3">
-                        <h3 className="font-bold text-lg text-slate-900 leading-tight">{product.name}</h3>
-                        <span className="font-black text-orange-600 text-lg shrink-0">${product.price.toLocaleString('es-AR')}</span>
+                        {/* Cambiado a la fuente serif oficial */}
+                        <h3 className="font-serif font-bold text-lg text-forest-700 leading-tight">{product.name}</h3>
+                        <span className="font-black text-terracotta-500 text-lg shrink-0">${product.price.toLocaleString('es-AR')}</span>
                       </div>
                       <p className="text-sm text-slate-500 font-medium line-clamp-3 leading-relaxed">
                         {product.description || 'Receta artesanal hecha en el barrio con ingredientes frescos.'}
                       </p>
                     </div>
 
-                    <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm transition-colors shadow-sm">
-                      <ShoppingBag size={16} /> Pedir este plato
-                  </Button>
+                    {/* [SOLUCIÓN] Envolvemos el botón en un Link de Next.js redirigiendo al checkout/carrito */}
+                    <Link href="/checkout" className="w-full">
+                      <Button className="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm transition-colors shadow-sm cursor-pointer">
+                        <ShoppingBag size={16} /> Pedir
+                      </Button>
+                    </Link>
                   </div>
 
                 </div>
@@ -213,7 +219,7 @@ export default function ClientMenu() {
                     onClick={() => handlePageChange(pageNum)}
                     className={`w-9 h-9 font-bold text-sm rounded-xl border transition-all duration-200 ${
                       currentPage === pageNum
-                        ? 'bg-orange-600 border-orange-600 text-white shadow-sm scale-105'
+                        ? 'bg-terracotta-500 border-terracotta-500 text-white shadow-sm scale-105'
                         : 'bg-white border-gray-200 text-slate-700 hover:border-gray-400'
                     }`}
                   >

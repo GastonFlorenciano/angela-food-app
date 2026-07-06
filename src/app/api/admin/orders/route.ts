@@ -73,3 +73,34 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'No se pudo actualizar el pedido.' }, { status: 500 });
   }
 }
+
+// Agregá esta función al final de tu archivo src/app/api/admin/orders/route.ts
+
+export async function DELETE(request: Request) {
+  try {
+    const { orderIds } = await request.json();
+
+    if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
+      return NextResponse.json(
+        { error: 'No se enviaron IDs válidos para eliminar.' },
+        { status: 400 }
+      );
+    }
+
+    // Le decimos a Prisma que borre de la base de datos todos los pedidos
+    // cuyos IDs estén dentro del array que mandamos desde el frontend
+    await prisma.order.deleteMany({
+      where: {
+        id: { in: orderIds },
+      },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error al eliminar pedidos:', error);
+    return NextResponse.json(
+      { error: 'Hubo un error en el servidor al intentar eliminar los pedidos.' },
+      { status: 500 }
+    );
+  }
+}

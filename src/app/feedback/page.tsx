@@ -10,8 +10,8 @@ interface Feedback {
   id: string;
   rating: number;
   comment: string;
-  created_at: string;
-  clientName?: string;
+  createdAt: string; // Cambiado de 'created_at' a 'createdAt'
+  customerName?: string; // Cambiado de 'clientName' a 'customerName' (o el nombre que tengas en el esquema)
 }
 
 export default function FeedbackPage() {
@@ -80,8 +80,7 @@ export default function FeedbackPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
       <div className="text-center mb-10">
-        <p className="text-orange-500 text-sm font-medium uppercase tracking-wide mb-1">Angela</p>
-        <h1 className="text-4xl font-bold text-gray-800">Opiniones del barrio</h1>
+        <h1 className="text-4xl font-bold text-gray-800">Opiniones</h1>
         <p className="text-gray-500 mt-2">Tu opinión nos ayuda a mejorar y hace la comunidad más grande.</p>
       </div>
 
@@ -111,10 +110,10 @@ export default function FeedbackPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 ">
         {/* Form */}
         <div>
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+          <div className="bg-cream-200/50 rounded-2xl p-6 shadow-lg">
             {submitted ? (
               <div className="text-center py-6">
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -173,18 +172,18 @@ export default function FeedbackPage() {
           {testimonials.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-10">Sé el primero en dejar una opinión.</p>
           ) : (
-            <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+            <div className="space-y-3 max-h-150 overflow-y-auto pr-1">
               {testimonials.map(t => (
-                <div key={t.id} className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+                <div key={t.id} className="bg-cream-200/50 rounded-xl p-4 shadow-lg">
                   <div className="flex items-center justify-between mb-2">
                     <StarRating value={t.rating} readonly size="sm" />
-                    <span className="text-xs text-gray-400">
-                      {new Date(t.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}
+                      <span className="text-xs text-black">
+                      {new Date(t.createdAt).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600 leading-relaxed">"{t.comment}"</p>
                   <p className="text-xs text-orange-500 font-medium mt-2">
-                    {t.clientName ?? 'Cliente anónimo'}
+                    {t.customerName ?? 'Cliente anónimo'}
                   </p>
                 </div>
               ))}

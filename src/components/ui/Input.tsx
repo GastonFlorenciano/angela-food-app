@@ -17,9 +17,9 @@ export function Input({ label, error, hint, className = '', id, ...props }: Inpu
       )}
       <input
         id={inputId}
-        className={`w-full rounded-xl border px-4 py-2.5 text-sm text-forest-700 placeholder-cream-400 transition-colors
+        className={`w-full rounded-xl border px-4 py-2.5 text-sm text-forest-700 placeholder-gray-500 transition-colors
           focus:outline-none focus:ring-2 focus:ring-terracotta-300 focus:border-terracotta-400
-          ${error ? 'border-red-400 bg-red-50' : 'border-cream-300 bg-white hover:border-cream-400'}
+          ${error ? 'border-red-400 bg-red-50' : 'border-terracotta-400 bg-white hover:border-cream-400'}
           ${className}`}
         {...props}
       />
@@ -46,9 +46,9 @@ export function Textarea({ label, error, hint, className = '', id, ...props }: T
       )}
       <textarea
         id={inputId}
-        className={`w-full rounded-xl border px-4 py-2.5 text-sm text-forest-700 placeholder-cream-400 transition-colors resize-none
+        className={`w-full rounded-xl border px-4 py-2.5 text-sm text-forest-700 placeholder:text-gray-500 transition-colors resize-none
           focus:outline-none focus:ring-2 focus:ring-terracotta-300 focus:border-terracotta-400
-          ${error ? 'border-red-400 bg-red-50' : 'border-cream-300 bg-white hover:border-cream-400'}
+          ${error ? 'border-red-400 bg-red-50' : 'border-terracotta-400 bg-white hover:border-cream-400'}
           ${className}`}
         {...props}
       />
@@ -77,7 +77,7 @@ export function Select({ label, error, options, className = '', id, ...props }: 
         id={inputId}
         className={`w-full rounded-xl border px-4 py-2.5 text-sm text-forest-700 transition-colors
           focus:outline-none focus:ring-2 focus:ring-terracotta-300 focus:border-terracotta-400
-          ${error ? 'border-red-400 bg-red-50' : 'border-cream-300 bg-white hover:border-cream-400'}
+          ${error ? 'border-red-400 bg-red-50' : 'border-terracotta-400 bg-white hover:border-cream-400'}
           ${className}`}
         {...props}
       >

@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Lock, Mail } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
   async function handleLogin(e: React.FormEvent) {
@@ -19,7 +20,7 @@ export default function AdminLogin() {
       setError('Por favor completá todos los campos.');
       return;
     }
-    
+
     setLoading(true);
     setError('');
 
@@ -46,13 +47,17 @@ export default function AdminLogin() {
     }
   }
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   return (
     <div className="min-h-[85vh] flex items-center justify-center bg-gray-50 px-4 sm:px-6">
       <div className="max-w-md w-full space-y-6 bg-white p-8 rounded-2xl border border-gray-200 shadow-sm animate-fadeIn">
-        
+
         {/* Cabecera */}
         <div className="text-center space-y-2">
-          <img src="/logo.jpeg" alt="Angela" className="h-36 w-36 rounded-full mx-auto object-cover border border-gray-100 shadow-sm" />
+          <img src="/logo.jpeg" alt="Angela" className="h-36 w-36 rounded-full mx-auto object-cover border border-gray-300 shadow-lg" />
           <h2 className="font-display font-black text-2xl text-slate-900">Administrador</h2>
         </div>
 
@@ -82,11 +87,18 @@ export default function AdminLogin() {
             <div className="relative">
               <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-gray-300 text-sm text-slate-900 focus:outline-none bg-white font-medium"
               />
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-700 hover:text-terracotta-500 transition-colors cursor-pointer"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
             </div>
           </div>
 

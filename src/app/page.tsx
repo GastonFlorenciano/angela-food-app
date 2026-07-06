@@ -35,7 +35,6 @@ export default function Home() {
         const menuRes = await fetch('/api/products');
         if (menuRes.ok) {
           const data = await menuRes.json();
-          // Muestra solo los primeros 6 destacados
           setFeatured(data.slice(0, 6));
         }
       } catch (error) {
@@ -51,38 +50,34 @@ export default function Home() {
     <div>
       {/* Hero */}
       <section
-        className="relative min-h-[85vh] flex items-center justify-center text-center px-4"
+        className="relative min-h-[90vh] sm:min-h-[85vh] flex items-center justify-center text-center px-4 pb-8 pt-2"
         style={{
           backgroundImage: 'linear-gradient(135deg, #faf3e8 0%, #f4e4cc 50%, #fdf3ee 100%)',
         }}
       >
-        <div className="relative z-10 max-w-2xl mx-auto py-20">
+        <div className="relative z-10 max-w-2xl ">
           <div className="w-fit bg-[#FAF1E8] rounded-full object-cover mx-auto shadow-lg mb-8 ring-4 ring-white ">
             <img
               src="/logo.jpeg"
               alt="Angela Sabores de Barrio"
-              className="w-44 h-44 p-4 rounded-full"
+              className="w-36 h-36 sm:w-44 sm:h-44 p-4 rounded-full"
             />
           </div>
-          <h1 className="font-display text-5xl sm:text-6xl font-bold text-forest-700 leading-tight mb-4">
+          <h1 className="font-serif text-4xl sm:text-6xl font-normal text-[#2D4A3E] leading-tight mb-4">
             Sabores que<br />
-            <span className="text-terracotta-500">abrazan el alma</span>
+            <span className="text-[#C77D51]">abrazan el alma</span>
           </h1>
-          <p className="text-sage-600 text-lg mb-8 leading-relaxed">
+          <p className="text-sage-600 text-base sm:text-lg mb-8 leading-relaxed max-w-md sm:max-w-none mx-auto">
             Comida casera hecha con amor, ingredientes frescos y las recetas de siempre.<br />
             Directo desde nuestra cocina hasta tu mesa.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/checkout">
-              <Button size="lg" variant="primary">
-                <ShoppingBag size={20} className="inline mr-2" />
+          
+          {/* Contenedor de botones optimizado para Responsividad (Vertical en mobile, horizontal en desktop) */}
+          <div className="flex flex-col sm:flex-row gap-3 justify-center items-stretch sm:items-center max-w-xs sm:max-w-none mx-auto px-4 sm:px-0">
+            <Link href="/checkout" className="w-full sm:w-auto">
+              <Button size="lg" variant="primary" className="w-full sm:w-auto py-3 px-6 h-auto bg-[#C77D51] hover:bg-[#A8643B] cursor-pointer flex items-center justify-center gap-2 font-bold rounded-xl shadow-sm text-sm transition-all">
+                <ShoppingBag size={18} className="shrink-0 text-white" />
                 Hacer un pedido
-              </Button>
-            </Link>
-            <Link href="/menu">
-              <Button size="lg" variant="outline">
-                Ver el menu completo
-                <ChevronRight size={20} className="inline ml-1" />
               </Button>
             </Link>
           </div>
@@ -94,7 +89,7 @@ export default function Home() {
       </section>
 
       {/* Feature strip */}
-      <section className="bg-forest-700 text-white py-10 px-4">
+      <section className="bg-forest-700 text-black py-10 px-4">
         <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-6">
           {[
             { icon: Heart, title: 'Hecho en casa', desc: 'Recetas tradicionales con ingredientes del barrio' },
@@ -102,7 +97,7 @@ export default function Home() {
             { icon: Clock, title: 'Siempre fresco', desc: 'Preparado al momento, nunca recalentado' },
           ].map(({ icon: Icon, title, desc }) => (
             <div key={title} className="flex items-start gap-4">
-              <div className="bg-terracotta-500/30 p-3 rounded-xl shrink-0">
+              <div className="bg-[#c46a3a]/30 p-3 rounded-xl shrink-0">
                 <Icon size={22} className="text-terracotta-200" />
               </div>
               <div>
@@ -119,7 +114,7 @@ export default function Home() {
         <div className="flex items-end justify-between mb-8">
           <div>
             <p className="text-terracotta-500 text-sm font-medium uppercase tracking-wide mb-1">Lo más pedido</p>
-            <h2 className="font-display text-3xl font-bold text-forest-700">Nuestros favoritos</h2>
+            <h2 className="font-serif text-3xl font-bold text-forest-700">Nuestros favoritos</h2>
           </div>
           <Link href="/menu" className="text-sm text-terracotta-500 hover:text-terracotta-600 font-medium flex items-center gap-1">
             Ver todo <ChevronRight size={16} />
@@ -154,7 +149,6 @@ export default function Home() {
 }
 
 function MenuCard({ item }: { item: MenuItem }) {
-  // Resolvemos la imagen local si es null en la base de datos
   const displayImage = item.imageUrl || getPlaceholderImage(item.category);
 
   return (
@@ -166,7 +160,6 @@ function MenuCard({ item }: { item: MenuItem }) {
             alt={item.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             onError={(e) => {
-              // Si la URL falla, oculta la etiqueta para forzar el icono genérico
               (e.target as HTMLImageElement).style.display = 'none';
             }}
           />
@@ -178,7 +171,7 @@ function MenuCard({ item }: { item: MenuItem }) {
       </div>
       <div className="p-4">
         <span className="text-xs font-medium text-terracotta-500 uppercase tracking-wide">{item.category}</span>
-        <h3 className="font-display font-semibold text-forest-700 mt-1 text-lg">{item.name}</h3>
+        <h3 className="font-serif font-semibold text-forest-700 mt-1 text-lg">{item.name}</h3>
         <p className="text-sm text-sage-600 mt-1 line-clamp-2">{item.description || 'Receta de barrio preparada al momento.'}</p>
         <div className="flex items-center justify-between mt-4">
           <span className="font-bold text-terracotta-500 text-lg">${item.price.toLocaleString('es-AR')}</span>

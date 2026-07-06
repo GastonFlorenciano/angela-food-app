@@ -39,7 +39,7 @@ model Product {
   description String
   price       Float
   imageUrl    String?
-  category    String      // Ej: "Hamburguesas", "Bebidas", "Pizzas"
+  category    String // Ej: "Hamburguesas", "Bebidas", "Pizzas"
   isAvailable Boolean     @default(true)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -54,8 +54,8 @@ model Order {
   customerPhone   String
   deliveryAddress String
   deliveryZone    String
-  paymentMethod   String      // "EFECTIVO" o "TRANSFERENCIA"
-  notes           String?     // Aclaraciones/Notas del cliente (Ej: "Sin cebolla")
+  paymentMethod   String // "EFECTIVO" o "TRANSFERENCIA"
+  notes           String? // Aclaraciones/Notas del cliente (Ej: "Sin cebolla")
   status          OrderStatus @default(PENDIENTE)
   total           Float
   createdAt       DateTime    @default(now())
@@ -65,21 +65,21 @@ model Order {
 
 // 6. Detalle de los productos de cada pedido
 model OrderItem {
-  id        String   @id @default(uuid())
+  id        String  @id @default(uuid())
   orderId   String
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId String
-  product   Product  @relation(fields: [productId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
   quantity  Int
-  price     Float    // Guardamos el precio del momento de la compra
+  price     Float // Guardamos el precio del momento de la compra
 }
 
 // 7. Tabla de Reseñas / Feedback
-model Review {
+model Feedback {
   id            String   @id @default(uuid())
   customerName  String   @default("Anónimo")
-  rating        Int      // Puntuación del 1 al 5
+  rating        Int
   comment       String
-  adminResponse String?  // Respuesta del gerente/encargado
+  adminResponse String?
   createdAt     DateTime @default(now())
 }

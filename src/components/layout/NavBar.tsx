@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X, ShoppingBag, Star, Package, Home, LayoutDashboard, UtensilsCrossed, LogOut } from 'lucide-react';
 
-// Enlaces simplificados para el CLIENTE
+// Enlaces unificados para el CLIENTE (Eliminado 'Ver Menú' redundante)
 const customerLinks = [
   { to: '/', label: 'Inicio', icon: Home },
-  { to: '/menu', label: 'Ver Menú', icon: ShoppingBag },
+  { to: '/checkout', label: 'Hacer Pedido', icon: ShoppingBag },
   { to: '/tracking', label: 'Mi Pedido', icon: Package },
   { to: '/feedback', label: 'Opiniones', icon: Star },
 ];
@@ -18,6 +18,7 @@ const adminLinks = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/orders', label: 'Cocina e Historial', icon: Package },
   { to: '/admin/menu', label: 'Administrar Platos (ABM)', icon: UtensilsCrossed },
+  { to: '/admin/feedback', label: 'Administrar Reseñas', icon: Star },
 ];
 
 export function Navbar() {
@@ -26,15 +27,12 @@ export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Detectamos si la URL actual arranca con "/admin"
   const isAdminRoute = pathname?.startsWith('/admin');
   
-  // Ocultamos la barra por completo si el administrador está en la pantalla de login aislada
   if (pathname === '/admin/login') return null;
 
   const currentLinks = isAdminRoute ? adminLinks : customerLinks;
 
-  // Función para borrar la sesión en el servidor y rebotar al login
   async function handleLogout() {
     setLoggingOut(true);
     try {
@@ -42,7 +40,7 @@ export function Navbar() {
       if (res.ok) {
         setOpen(false);
         router.push('/admin/login');
-        router.refresh(); // Limpia los estados de ruta guardados
+        router.refresh();
       }
     } catch (error) {
       alert('Error al intentar cerrar sesión. Intentá de nuevo.');
@@ -54,16 +52,19 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-cream-200 shadow-sm select-none text-slate-800">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-16 my-2">
           
           {/* Logo y Encabezado */}
-          <Link href={isAdminRoute ? "/admin/dashboard" : "/"} className="flex items-center gap-3" onClick={() => setOpen(false)}>
-            <img src="/logo.jpeg" alt="Angela" className="h-10 w-10 rounded-full object-cover shadow-sm" />
-            <div>
-              <p className="font-display font-bold text-forest-700 text-lg leading-tight">Angela</p>
-              <p className="text-xs text-terracotta-500 font-bold tracking-wide uppercase">
+          <Link href={isAdminRoute ? "/admin/dashboard" : "/"} className="flex items-center gap-2 max-w-[75%] sm:max-w-none" onClick={() => setOpen(false)}>
+            <img src="/logo.jpeg" alt="Angela" className="h-14 w-14 sm:h-16 sm:w-16 rounded-full object-cover shadow-sm shrink-0" />
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="font-cursive font-bold text-forest-700 text-2xl sm:text-3xl leading-none shrink-0">
+                Angela
+              </span>
+              <span className="text-[#C5794C] font-light text-xl select-none hidden sm:inline" aria-hidden="true">|</span>
+              <span className="text-[10px] text-[#C5794C] font-black tracking-widest uppercase whitespace-nowrap pt-1 truncate hidden sm:inline">
                 {isAdminRoute ? 'Panel de Control' : 'Sabores de Barrio'}
-              </p>
+              </span>
             </div>
           </Link>
 
@@ -86,7 +87,6 @@ export function Navbar() {
               );
             })}
 
-            {/* Botón de Salida exclusivo para Admin en Escritorio */}
             {isAdminRoute && (
               <button
                 onClick={handleLogout}
@@ -100,7 +100,7 @@ export function Navbar() {
 
           {/* Menú Hamburguesa Mobile */}
           <button
-            className="md:hidden p-2 rounded-lg text-forest-700 hover:bg-cream-100 transition-colors"
+            className="md:hidden p-2 rounded-lg text-forest-700 hover:bg-cream-100 transition-colors shrink-0"
             onClick={() => setOpen(v => !v)}
             aria-label="Abrir menu"
           >
@@ -131,7 +131,6 @@ export function Navbar() {
             );
           })}
 
-          {/* Botón de Salida exclusivo para Admin en Mobile */}
           {isAdminRoute && (
             <button
               onClick={handleLogout}

@@ -1,12 +1,12 @@
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'none';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
 }
 
-export function Button({ variant = 'primary', size = 'md', loading, className = '', children, disabled, ...props }: ButtonProps) {
+export function Button({ variant = 'none', size = 'md', loading, className = '', children, disabled, ...props }: ButtonProps) {
   const base = 'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variants = {
@@ -15,6 +15,7 @@ export function Button({ variant = 'primary', size = 'md', loading, className = 
     outline: 'border-2 border-terracotta-500 text-terracotta-600 hover:bg-terracotta-50 focus:ring-terracotta-300',
     ghost: 'text-forest-700 hover:bg-cream-200 focus:ring-cream-300',
     danger: 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-400 shadow-sm',
+    none: '',
   };
 
   const sizes = {

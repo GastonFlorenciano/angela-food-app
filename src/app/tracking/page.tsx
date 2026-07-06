@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
@@ -26,7 +27,6 @@ interface Order {
   items: OrderItem[];
 }
 
-// Pasos ordenados según el Enum de tu Schema de Prisma
 const STATUS_STEPS = ['PENDIENTE', 'EN_PREPARACION', 'EN_CAMINO', 'ENTREGADO'];
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
@@ -45,14 +45,27 @@ const ORDER_STATUS_COLORS: Record<string, string> = {
   CANCELADO: 'bg-rose-100 text-rose-800 border-rose-200'
 };
 
-export default function OrderTracking() {
+// --- COMPONENTE INTERNO: Lógica de seguimiento ---
+// Lo separamos para poder envolverlo en <Suspense>, requisito de Next.js al usar useSearchParams
+function TrackingContent() {
+  const searchParams = useSearchParams();
+  const urlOrderId = searchParams?.get('id'); // Atrapa el ?id=ORD-0003
+
   const [query, setQuery] = useState('');
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState('');
 
-  // Función para consultar el estado del pedido a la API
+  // 1. Auto-completado y búsqueda instantánea
+  useEffect(() => {
+    if (urlOrderId) {
+      setQuery(urlOrderId); // Rellena el input
+      setSearched(true);
+      checkOrderStatus(urlOrderId, false); // Ejecuta la búsqueda automáticamente
+    }
+  }, [urlOrderId]);
+
   async function checkOrderStatus(orderNumberStr: string, isSilent = false) {
     if (!isSilent) setLoading(true);
     try {
@@ -74,7 +87,6 @@ export default function OrderTracking() {
     }
   }
 
-  // Manejador del botón Buscar
   function handleSearch() {
     const q = query.trim().toUpperCase();
     if (!q) {
@@ -85,7 +97,6 @@ export default function OrderTracking() {
     checkOrderStatus(q, false);
   }
 
-  // Polling Activo: Consulta en segundo plano cada 5 segundos si el pedido está abierto y activo
   useEffect(() => {
     if (!order || order.status === 'ENTREGADO' || order.status === 'CANCELADO') return;
 
@@ -100,14 +111,12 @@ export default function OrderTracking() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 min-h-[80vh] bg-white text-slate-800">
-      {/* Cabecera */}
       <div className="mb-8">
         <p className="text-orange-600 text-sm font-bold uppercase tracking-wide mb-1">Angela</p>
         <h1 className="font-display text-4xl font-extrabold text-slate-900">Seguir mi pedido</h1>
         <p className="text-slate-600 mt-2">Ingresá el número de pedido para ver el estado en vivo.</p>
       </div>
 
-      {/* Input de Búsqueda */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm mb-6">
         <div className="flex gap-3">
           <Input
@@ -125,9 +134,8 @@ export default function OrderTracking() {
       </div>
 
       {order && (
-        <div className="space-y-6">
-          {/* Tarjeta Principal de Seguimiento */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <div className="space-y-6 animate-fadeIn">
+          <div className="bg-cream-200/50 rounded-2xl p-6 shadow-lg">
             <div className="flex items-start justify-between mb-8">
               <div>
                 <h2 className="font-display font-black text-2xl text-slate-900">{order.order_number}</h2>
@@ -141,13 +149,9 @@ export default function OrderTracking() {
               </Badge>
             </div>
 
-            {/* BARRA DE PROGRESO FLUIDA ESTILO PEDIDOSYA */}
             {order.status !== 'CANCELADO' && (
-              <div className="relative my-12 px-2 bg-white select-none">
-                
-                {/* Vía Conectora Base - Gris Sólido y visible */}
+              <div className="relative my-12 px-2 bg-cream-100/50 select-none">
                 <div className="absolute top-[14px] left-4 right-4 h-2 bg-gray-300 rounded-full" style={{ zIndex: 1 }}>
-                  {/* Relleno Naranja Vivo animado */}
                   <div
                     className="h-full bg-orange-600 rounded-full transition-all duration-700 ease-out"
                     style={{
@@ -160,7 +164,6 @@ export default function OrderTracking() {
                   />
                 </div>
 
-                {/* Burbujas de los Números */}
                 <div className="flex justify-between relative" style={{ zIndex: 2 }}>
                   {STATUS_STEPS.map((s, i) => {
                     const isCurrent = i === stepIndex;
@@ -168,7 +171,6 @@ export default function OrderTracking() {
 
                     return (
                       <div key={s} className="flex flex-col items-center">
-                        {/* El Círculo */}
                         <div
                           className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black border-2 transition-all duration-500 ${
                             isCurrent
@@ -178,24 +180,13 @@ export default function OrderTracking() {
                               : 'bg-gray-100 border-gray-400'
                           }`}
                         >
-                          {/* Texto del número con contraste absoluto */}
-                          <span 
-                            className={`font-black text-sm ${
-                              isCurrent || isPast ? 'text-white' : 'text-gray-800'
-                            }`}
-                          >
+                          <span className={`font-black text-sm ${isCurrent || isPast ? 'text-white' : 'text-gray-800'}`}>
                             {i + 1}
                           </span>
                         </div>
-
-                        {/* Texto Descriptivo Inferior */}
                         <span
                           className={`text-xs mt-3 font-bold hidden sm:block transition-colors duration-300 ${
-                            isCurrent
-                              ? 'text-orange-600 font-extrabold'
-                              : isPast
-                              ? 'text-slate-900 font-bold'
-                              : 'text-gray-500 font-semibold'
+                            isCurrent ? 'text-orange-600 font-extrabold' : isPast ? 'text-slate-900 font-bold' : 'text-gray-500 font-semibold'
                           }`}
                         >
                           {ORDER_STATUS_LABELS[s]}
@@ -214,12 +205,11 @@ export default function OrderTracking() {
             )}
           </div>
 
-          {/* Desglose del Pedido */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+          <div className="bg-cream-200/50 rounded-2xl p-6 shadow-lg">
             <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2 border-b border-gray-100 pb-2">
               <Package size={16} className="text-orange-600" /> Productos pedidos
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-3 bg-white p-2 rounded">
               {order.items.map((item, i) => (
                 <div key={i} className="flex justify-between text-sm text-slate-800">
                   <span className="font-semibold">{item.quantity}× {item.name}</span>
@@ -235,5 +225,15 @@ export default function OrderTracking() {
         </div>
       )}
     </div>
+  );
+}
+
+// --- CONTENEDOR PRINCIPAL ---
+// Envuelve el componente en un Suspense para cumplir con las reglas de Next.js para Client Components que leen URLs
+export default function OrderTracking() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center font-bold text-slate-500">Cargando seguimiento...</div>}>
+      <TrackingContent />
+    </Suspense>
   );
 }

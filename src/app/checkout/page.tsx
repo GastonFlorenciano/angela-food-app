@@ -26,8 +26,11 @@ interface OrderItem {
   subtotal: number;
 }
 
-const PAYMENT_METHODS = ['Efectivo', 'Transferencia', 'MercadoPago'];
+// 1. Modificado: Solo Efectivo y Transferencia
+const PAYMENT_METHODS = ['Efectivo', 'Transferencia'];
 const ITEMS_PER_PAGE = 6;
+// 2. Nuevo: Costo fijo de envío
+const DELIVERY_FEE = 2500;
 
 type Step = 'menu' | 'client' | 'confirm' | 'success';
 
@@ -75,12 +78,23 @@ export default function Checkout() {
   }, []);
 
   const categories = ['Todos', ...Array.from(new Set(menuItems.map(item => item.category)))];
+  console.log(categories)
 
   let filtered = menuItems.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = activeCategory === 'Todos' ||
-      product.category.toLowerCase().trim().includes(activeCategory.toLowerCase().trim().replace('á', 'a'));
+    // 1. Normalizar búsqueda (minúsculas)
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = product.name.toLowerCase().includes(q) ||
+      product.description.toLowerCase().includes(q);
+
+    // 2. Normalizar categorías: minúsculas, sin acentos y sin espacios
+    const normalize = (str: string) => 
+      str.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    const activeCatNorm = normalize(activeCategory);
+    const productCatNorm = normalize(product.category);
+
+    const matchesCategory = activeCategory === 'Todos' || activeCatNorm === productCatNorm;
+
     return matchesSearch && matchesCategory;
   });
 
@@ -120,8 +134,10 @@ export default function Checkout() {
     setCart(prev => prev.filter(c => c.id !== id));
   }
 
-  const total = cart.reduce((sum, i) => sum + i.subtotal, 0);
+  // 3. Modificado: Cálculos dinámicos con envío
+  const subtotal = cart.reduce((sum, i) => sum + i.subtotal, 0);
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
+  const finalTotal = deliveryType === 'delivery' ? subtotal + DELIVERY_FEE : subtotal;
 
   function getQty(id: string) {
     return cart.find(c => c.id === id)?.quantity ?? 0;
@@ -152,7 +168,7 @@ export default function Checkout() {
       deliveryZone: deliveryType === 'delivery' ? client.neighborhood : '-',
       paymentMethod: client.paymentMethod,
       notes: client.notes,
-      total: total,
+      total: finalTotal, // Pasamos el total ya sumado
       items: cart.map(item => ({ id: item.id, name: item.name, quantity: item.quantity, price: item.price, subtotal: item.subtotal }))
     };
     try {
@@ -180,7 +196,6 @@ export default function Checkout() {
             <Button variant="outline" className="flex-1 cursor-pointer" onClick={() => { setStep('menu'); setCart([]); setClient(defaultClient); }}>
               Nuevo pedido
             </Button>
-            {/* [CORREGIDO] Inyecta dinámicamente la query id en la URL de redirección */}
             <Button variant="primary" className="flex-1 cursor-pointer" onClick={() => router.push(`/tracking?id=${orderNumber}`)}>
               Ver mi pedido
             </Button>
@@ -230,7 +245,7 @@ export default function Checkout() {
               <div className="flex gap-1.5 overflow-x-auto w-full pb-1.5">
                 {categories.map(cat => (
                   <button key={cat} onClick={() => setActiveCategory(cat)}
-                    className={`whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${activeCategory === cat ? 'bg-terracotta-500 text-white' : 'bg-white border border-gray-200'}`}>{cat}</button>
+                    className={`whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${activeCategory === cat ? 'bg-terracotta-500 text-white' : 'bg-white border border-gray-200'} cursor-pointer hover:bg-terracotta-400 hover:text-white transition-all duration-200`}>{cat}</button>
                 ))}
               </div>
             </div>
@@ -269,9 +284,9 @@ export default function Checkout() {
 
             {totalPages > 1 && (
               <div className="flex justify-center items-center gap-4 mt-6">
-                <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>Anterior</Button>
+                <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className={`${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-terracotta-500 hover:text-white'}`}>Anterior</Button>
                 <span className="font-bold text-sm">Pág. {currentPage} de {totalPages}</span>
-                <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>Siguiente</Button>
+                <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className={`${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-terracotta-500 hover:text-white'}`}>Siguiente</Button>
               </div>
             )}
           </div>
@@ -299,9 +314,21 @@ export default function Checkout() {
                       </button>
                     </div>
                   ))}
-                  <div className="pt-2 flex justify-between text-base">
-                    <span className="font-serif font-bold text-forest-700">Total estimado</span>
-                    <span className="font-black text-terracotta-500">${total.toLocaleString('es-AR')}</span>
+                  <div className="pt-2 flex flex-col gap-1 text-sm border-t border-cream-100 mt-2">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Subtotal</span>
+                      <span className="font-bold">${subtotal.toLocaleString('es-AR')}</span>
+                    </div>
+                    {deliveryType === 'delivery' && (
+                      <div className="flex justify-between text-slate-500">
+                        <span>Costo de envío</span>
+                        <span>${DELIVERY_FEE.toLocaleString('es-AR')}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-base mt-2 pt-2 border-t border-cream-200">
+                      <span className="font-serif font-bold text-forest-700">Total estimado</span>
+                      <span className="font-black text-terracotta-500">${finalTotal.toLocaleString('es-AR')}</span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -332,8 +359,7 @@ export default function Checkout() {
                     key={type}
                     type="button"
                     onClick={() => setDeliveryType(type)}
-                    className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${deliveryType === type ? 'border-orange-400 bg-orange-50 text-orange-600' : 'border-none text-gray-500 hover:border-orange-200'
-                      }`}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${deliveryType === type ? 'bg-terracotta-500 text-white' : 'border border-orange-300 bg-white hover:bg-orange-300 hover:text-white text-orange-600'} cursor-pointer transition-all duration-200`}
                   >
                     {type === 'delivery' ? 'Delivery' : 'Retiro en local'}
                   </button>
@@ -359,7 +385,7 @@ export default function Checkout() {
             <Textarea label="Notas adicionales" value={client.notes} onChange={e => setClient(p => ({ ...p, notes: e.target.value }))} placeholder="Alergias, preferencias, instrucciones especiales..." rows={3} />
 
             <div className="flex gap-3 pt-4">
-              <Button variant="ghost" onClick={() => setStep('menu')}>Volver</Button>
+              <Button variant="ghost" onClick={() => setStep('menu')} className='cursor-pointer'>Volver</Button>
               <Button variant="primary" className="flex-1 cursor-pointer" onClick={() => { if (validateClient()) setStep('confirm'); }}>
                 Continuar
                 <ChevronRight size={16} className="ml-2 inline" />
@@ -383,9 +409,17 @@ export default function Checkout() {
                     <span className="font-medium text-orange-600">${item.subtotal.toLocaleString('es-AR')}</span>
                   </div>
                 ))}
-                <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between font-bold">
+                
+                {deliveryType === 'delivery' && (
+                  <div className="flex justify-between text-sm pt-2 text-slate-500">
+                    <span>Costo de envío</span>
+                    <span>${DELIVERY_FEE.toLocaleString('es-AR')}</span>
+                  </div>
+                )}
+                
+                <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between font-bold text-lg">
                   <span className="text-gray-800">Total</span>
-                  <span className="text-orange-600">${total.toLocaleString('es-AR')}</span>
+                  <span className="text-orange-600">${finalTotal.toLocaleString('es-AR')}</span>
                 </div>
               </div>
             </div>

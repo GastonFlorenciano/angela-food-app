@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ImageUpload } from '@/components/ui/ImageUpload';
 import { PlusCircle, Edit2, Trash2, Check, X, Utensils, Star } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Product {
   id: string;
@@ -18,9 +19,10 @@ interface Product {
 }
 
 const CATEGORIES = ['Regionales', 'Empanadas', 'Pizzas', 'Chipá', 'Sándwiches'];
+const ITEMS_PER_PAGE = 6
 
-function ProductCard({ product, toggleAvailability, openEditModal, handleDelete }: { 
-  product: Product, 
+function ProductCard({ product, toggleAvailability, openEditModal, handleDelete }: {
+  product: Product,
   toggleAvailability: (id: string, current: boolean) => void,
   openEditModal: (p: Product) => void,
   handleDelete: (id: string) => void
@@ -72,9 +74,8 @@ function ProductCard({ product, toggleAvailability, openEditModal, handleDelete 
       <div className="px-5 pb-5 pt-2 flex items-center justify-between border-t border-gray-50 bg-gray-50/30">
         <button
           onClick={() => toggleAvailability(product.id, product.isAvailable)}
-          className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
-            product.isAvailable ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'
-          }`}
+          className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${product.isAvailable ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'
+            }`}
         >
           {product.isAvailable ? <><Check size={14} /> Disponible</> : <><X size={14} /> Sin Stock</>}
         </button>
@@ -111,6 +112,9 @@ export default function AdminMenu() {
   const [isCustomCategory, setIsCustomCategory] = useState(false);
   const [customCategory, setCustomCategory] = useState('');
 
+  const [activeCategory, setActiveCategory] = useState('Todos');
+  const [currentPage, setCurrentPage] = useState(1);
+
   async function loadProducts() {
     setLoading(true);
     try {
@@ -124,16 +128,37 @@ export default function AdminMenu() {
 
   useEffect(() => { loadProducts(); }, []);
 
+  // Lógica de Filtros y Paginación
+  const filteredProducts = activeCategory === 'Todos'
+    ? products
+    : products.filter(p => p.category === activeCategory);
+
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  // Dinamismo para las categorías del filtro
+  const allCategories = ['Todos', ...Array.from(new Set(products.map(p => p.category)))];
+
   function openCreateModal() {
-    setSelectedProduct(null); setName(''); setDescription(''); setPrice(''); 
+    setSelectedProduct(null); setName(''); setDescription(''); setPrice('');
     setCategory(CATEGORIES[0]); setIsCustomCategory(false); setCustomCategory('');
     setIsAvailable(true); setIsFeatured(false); setImageFile(null); setCurrentImageUrl(null); setModalOpen(true);
   }
 
   function openEditModal(product: Product) {
-    setSelectedProduct(product); setName(product.name); setDescription(product.description); setPrice(product.price.toString()); 
+    setSelectedProduct(product); setName(product.name); setDescription(product.description); setPrice(product.price.toString());
     setIsAvailable(product.isAvailable); setIsFeatured(product.isFeatured || false); setImageFile(null); setCurrentImageUrl(product.imageUrl);
-    
+
     // Si la categoría del producto no está en la lista fija, activamos el input personalizado
     if (CATEGORIES.includes(product.category)) {
       setCategory(product.category);
@@ -144,14 +169,14 @@ export default function AdminMenu() {
       setIsCustomCategory(true);
       setCustomCategory(product.category);
     }
-    
+
     setModalOpen(true);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsSaving(true);
-    
+
     // Determinamos qué texto de categoría enviar
     const finalCategory = isCustomCategory ? customCategory.trim() : category;
 
@@ -163,13 +188,13 @@ export default function AdminMenu() {
 
     try {
       const formData = new FormData();
-      formData.append('name', name); 
-      formData.append('description', description); 
-      formData.append('price', price); 
+      formData.append('name', name);
+      formData.append('description', description);
+      formData.append('price', price);
       formData.append('category', finalCategory); // Enviamos la categoría resuelta
       formData.append('isAvailable', String(isAvailable));
       formData.append('isFeatured', String(isFeatured));
-      
+
       if (imageFile) formData.append('image', imageFile);
       const url = selectedProduct ? `/api/products/${selectedProduct.id}` : '/api/products';
       const method = selectedProduct ? 'PUT' : 'POST';
@@ -193,12 +218,76 @@ export default function AdminMenu() {
     <div className="p-6 max-w-7xl mx-auto bg-white text-slate-800 min-h-screen">
       <div className="flex items-center justify-between mb-8">
         <h1 className="font-display text-3xl font-black text-slate-900">Carta de Productos</h1>
-        <Button onClick={openCreateModal} className="bg-orange-600 hover:bg-orange-700 text-white font-bold"><PlusCircle size={16} className="mr-2"/> Nuevo Plato</Button>
+        <Button onClick={openCreateModal} className="bg-orange-600 hover:bg-orange-700 text-white font-bold"><PlusCircle size={16} className="mr-2" /> Nuevo Plato</Button>
+      </div>
+
+      {/* Filtros */}
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+        {allCategories.map(cat => (
+          <button key={cat} onClick={() => { setActiveCategory(cat); setCurrentPage(1); }} className={`px-4 py-2 rounded-full text-sm font-bold ${activeCategory === cat ? 'bg-orange-600 text-white' : 'bg-gray-100 text-slate-600'} cursor-pointer hover:bg-terracotta-400 hover:text-white transition-all duration-200`}>
+            {cat}
+          </button>
+        ))}
       </div>
 
       {loading ? <p className="text-center p-12">Cargando...</p> : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {products.map(p => <ProductCard key={p.id} product={p} toggleAvailability={toggleAvailability} openEditModal={openEditModal} handleDelete={handleDelete} />)}
+        <div className="relative overflow-hidden min-h-150">
+
+          <AnimatePresence mode="wait">
+
+            <motion.div
+
+              key={`${activeCategory}-${currentPage}`}
+
+              initial={{ x: 80, opacity: 0 }}
+
+              animate={{ x: 0, opacity: 1 }}
+
+              exit={{ x: -80, opacity: 0 }}
+
+              transition={{
+
+                duration: 0.35,
+
+                ease: [0.22, 1, 0.36, 1]
+
+              }}
+
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+
+            >
+
+              {paginatedProducts.map(p => (
+
+                <ProductCard
+
+                  key={p.id}
+
+                  product={p}
+
+                  toggleAvailability={toggleAvailability}
+
+                  openEditModal={openEditModal}
+
+                  handleDelete={handleDelete}
+
+                />
+
+              ))}
+
+            </motion.div>
+
+          </AnimatePresence>
+
+        </div>
+      )}
+
+      {/* Paginación */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4 mt-8">
+          <Button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} className={`${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-terracotta-500 hover:text-white'}`}>Anterior</Button>
+          <span className="font-bold">Pág. {currentPage} de {totalPages}</span>
+          <Button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages} className={`${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-terracotta-500 hover:text-white'}`}>Siguiente</Button>
         </div>
       )}
 
@@ -208,11 +297,11 @@ export default function AdminMenu() {
           <div className="md:w-1/2 space-y-4">
             <input type="text" value={name} onChange={e => setName(e.target.value)} required className="w-full px-4 py-2 rounded-xl border border-gray-300 text-sm" placeholder="Nombre" />
             <input type="number" value={price} onChange={e => setPrice(e.target.value)} required className="w-full px-4 py-2 rounded-xl border border-gray-300 text-sm" placeholder="Precio" />
-            
+
             {/* Lógica del selector de categorías condicional */}
             <div className="space-y-2">
-              <select 
-                value={isCustomCategory ? 'NUEVA' : category} 
+              <select
+                value={isCustomCategory ? 'NUEVA' : category}
                 onChange={e => {
                   if (e.target.value === 'NUEVA') {
                     setIsCustomCategory(true);
@@ -220,7 +309,7 @@ export default function AdminMenu() {
                     setIsCustomCategory(false);
                     setCategory(e.target.value);
                   }
-                }} 
+                }}
                 className="w-full px-4 py-2 rounded-xl border border-gray-300 text-sm bg-white"
               >
                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -229,19 +318,19 @@ export default function AdminMenu() {
 
               {/* Si seleccionó "+ Otra categoría...", se renderiza este input de texto libre */}
               {isCustomCategory && (
-                <input 
-                  type="text" 
-                  value={customCategory} 
-                  onChange={e => setCustomCategory(e.target.value)} 
+                <input
+                  type="text"
+                  value={customCategory}
+                  onChange={e => setCustomCategory(e.target.value)}
                   required
-                  className="w-full px-4 py-2 rounded-xl border-2 border-orange-200 focus:border-orange-500 text-sm bg-orange-50/10 placeholder-gray-400" 
-                  placeholder="Escribí el nombre de la nueva categoría (Ej: Lomitos)" 
+                  className="w-full px-4 py-2 rounded-xl border-2 border-orange-200 focus:border-orange-500 text-sm bg-orange-50/10 placeholder-gray-400"
+                  placeholder="Escribí el nombre de la nueva categoría (Ej: Lomitos)"
                 />
               )}
             </div>
 
             <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full px-4 py-2 rounded-xl border border-gray-300 text-sm" placeholder="Descripción" />
-            
+
             <div className="flex items-center gap-3 bg-gray-50 p-3.5 rounded-xl border border-gray-200 select-none">
               <input
                 type="checkbox"

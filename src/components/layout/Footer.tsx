@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Heart, Phone, MapPin, Clock } from 'lucide-react';
+import { Heart, Camera, Phone, MapPin, Clock } from 'lucide-react';
 
 export function Footer() {
   const pathname = usePathname();
@@ -30,19 +30,23 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-semibold text-white mb-3">Contacto</h4>
+            <h4 className="font-semibold text-white mb-3">Información</h4>
             <ul className="space-y-2 text-sm text-cream-300">
-              <li className="flex items-center gap-2"><Phone size={14} className="text-terracotta-300" /> +54 11 0000-0000</li>
-              <li className="flex items-center gap-2"><MapPin size={14} className="text-terracotta-300" /> Barrio Sur, Buenos Aires</li>
-              <li className="flex items-center gap-2"><Clock size={14} className="text-terracotta-300" /> Lun–Sáb 10:00–21:00</li>
+              <li className="flex items-center gap-2"><Phone size={14} className="text-terracotta-300" />(+54 341) 2152649</li>
+              <li className="flex items-center gap-2"><MapPin size={14} className="text-terracotta-300" /> Castellanos 1562, Rosario</li>
+              <li className="flex items-center gap-2"><Clock size={14} className="text-terracotta-300" /> Todos los días: 11 a 15 - 19 a 23</li>
             </ul>
           </div>
 
           <div>
             <h4 className="font-semibold text-white mb-3">Links</h4>
-            <ul className="space-y-1.5 text-sm">
+            <Link href='https://www.instagram.com/angelasaboresdebarrio?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==' target="_blank" rel="noopener noreferrer">
+              <li className="flex items-center gap-2"><Camera size={14} className="text-terracotta-300" /> Seguinos en Instagram</li>
+            </Link>
+
+            {/* <ul className="space-y-1.5 text-sm">
               {[
-                { to: '/menu', label: 'Ver menu' },
+                // { to: '/menu', label: 'Ver menu' },
                 { to: '/checkout', label: 'Hacer un pedido' },
                 { to: '/tracking', label: 'Seguir mi pedido' },
                 { to: '/feedback', label: 'Dejar una opinión' },
@@ -53,7 +57,7 @@ export function Footer() {
                   </Link>
                 </li>
               ))}
-            </ul>
+            </ul> */}
           </div>
         </div>
 

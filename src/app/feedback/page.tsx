@@ -86,7 +86,7 @@ export default function FeedbackPage() {
 
       {/* Stats */}
       {testimonials.length > 0 && (
-        <div className="flex items-center justify-center gap-8 mb-10 bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+        <div className="bg-cream-200/50 flex items-center justify-center gap-8 mb-10 rounded-2xl p-6 shadow-lg">
           <div className="text-center">
             <p className="text-5xl font-bold text-orange-500">{avgRating}</p>
             <StarRating value={Math.round(Number(avgRating))} readonly size="md" />
@@ -113,7 +113,7 @@ export default function FeedbackPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 ">
         {/* Form */}
         <div>
-          <div className="bg-cream-200/50 rounded-2xl p-6 shadow-lg">
+          <div className="bg-cream-200 rounded-2xl p-6 shadow-lg">
             {submitted ? (
               <div className="text-center py-6">
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -143,12 +143,14 @@ export default function FeedbackPage() {
                   onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
                   placeholder="¿Cómo te llamás?"
                   error={errors.name}
+                  className='border-none'
                 />
                 <Input
                   label="Número de pedido (opcional)"
                   value={form.order_number}
                   onChange={e => setForm(p => ({ ...p, order_number: e.target.value }))}
                   placeholder="Ej: ORD-0001"
+                  className='border-none'
                 />
                 <Textarea
                   label="Tu opinión *"
@@ -157,8 +159,9 @@ export default function FeedbackPage() {
                   placeholder="Contanos tu experiencia. ¿Qué fue lo que más te gustó?"
                   rows={4}
                   error={errors.comment}
+                  className='border-none'
                 />
-                <Button variant="primary" className="w-full" loading={loading} onClick={submit}>
+                <Button variant="primary" className="w-full cursor-pointer" loading={loading} onClick={submit}>
                   Enviar opinión
                 </Button>
               </div>
@@ -174,7 +177,7 @@ export default function FeedbackPage() {
           ) : (
             <div className="space-y-3 max-h-150 overflow-y-auto pr-1">
               {testimonials.map(t => (
-                <div key={t.id} className="bg-cream-200/50 rounded-xl p-4 shadow-lg">
+                <div key={t.id} className="bg-cream-200 rounded-xl p-4 shadow-lg">
                   <div className="flex items-center justify-between mb-2">
                     <StarRating value={t.rating} readonly size="sm" />
                       <span className="text-xs text-black">

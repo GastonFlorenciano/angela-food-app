@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation'; // Necesitamos esto
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -58,9 +59,10 @@ export default function AdminOrders() {
   const [filterStatus, setFilterStatus] = useState('TODOS');
   const [selected, setSelected] = useState<Order | null>(null);
   const [updating, setUpdating] = useState(false);
-  
-  // Nuevo estado para manejar las selecciones múltiples
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  
+  const searchParams = useSearchParams();
+  const orderIdFromUrl = searchParams.get('orderId');
 
   async function loadOrders() {
     setLoading(true);
@@ -69,7 +71,6 @@ export default function AdminOrders() {
       if (res.ok) {
         const data = await res.json();
         setOrders(data);
-        setSelectedIds([]); // Limpia la selección al actualizar la lista
       }
     } catch (e) {
       console.error('Error cargando órdenes:', e);
@@ -78,7 +79,18 @@ export default function AdminOrders() {
     }
   }
 
+  // Carga inicial
   useEffect(() => { loadOrders(); }, []);
+
+  // [NUEVO] Escucha la URL y abre el modal si viene un ID
+  useEffect(() => {
+    if (orderIdFromUrl && orders.length > 0) {
+      const foundOrder = orders.find(o => o.orderNumber === orderIdFromUrl);
+      if (foundOrder) {
+        setSelected(foundOrder);
+      }
+    }
+  }, [orderIdFromUrl, orders]);
 
   async function updateStatus(orderId: string, newStatus: string) {
     setUpdating(true);
@@ -99,10 +111,8 @@ export default function AdminOrders() {
     }
   }
 
-  // Nueva función para eliminar pedidos (individual o en lote)
   async function deleteOrders(idsToDelete: string[]) {
-    if (!window.confirm(`¿Estás seguro de eliminar ${idsToDelete.length} pedido(s)? Esta acción no se puede deshacer y los borrará de la base de datos.`)) return;
-    
+    if (!window.confirm(`¿Estás seguro de eliminar ${idsToDelete.length} pedido(s)?`)) return;
     setUpdating(true);
     try {
       const res = await fetch('/api/admin/orders', {
@@ -110,13 +120,9 @@ export default function AdminOrders() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderIds: idsToDelete }),
       });
-      
       if (res.ok) {
-        // Quitamos visualmente los pedidos eliminados sin recargar la página
         setOrders(prev => prev.filter(o => !idsToDelete.includes(o.id)));
-        setSelectedIds([]); // Reseteamos las casillas tildadas
-      } else {
-        alert('Hubo un problema al intentar eliminar los pedidos.');
+        setSelectedIds([]);
       }
     } catch (e) {
       console.error(e);
@@ -131,13 +137,8 @@ export default function AdminOrders() {
     return matchStatus && (!q || o.orderNumber.toLowerCase().includes(q) || o.customerName.toLowerCase().includes(q));
   });
 
-  // Helpers para los checkboxes
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedIds(filtered.map(o => o.id));
-    } else {
-      setSelectedIds([]);
-    }
+    setSelectedIds(e.target.checked ? filtered.map(o => o.id) : []);
   };
 
   const toggleSelection = (id: string) => {
@@ -190,7 +191,6 @@ export default function AdminOrders() {
         })}
       </div>
 
-      {/* Barra flotante de acciones masivas */}
       {selectedIds.length > 0 && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-5 flex items-center justify-between animate-fadeIn shadow-sm">
           <span className="font-bold text-sm">{selectedIds.length} pedidos seleccionados</span>
@@ -210,14 +210,8 @@ export default function AdminOrders() {
             <table className="w-full text-sm text-left">
               <thead className="bg-cream-50 border-b border-cream-200 text-sage-600 font-bold">
                 <tr>
-                  {/* Columna del checkbox maestro */}
                   <th className="px-4 py-3 w-12 text-center">
-                    <input 
-                      type="checkbox" 
-                      className="rounded border-cream-300 text-forest-700 focus:ring-forest-700 w-4 h-4 cursor-pointer"
-                      checked={filtered.length > 0 && selectedIds.length === filtered.length}
-                      onChange={handleSelectAll}
-                    />
+                    <input type="checkbox" className="rounded border-cream-300 text-forest-700 focus:ring-forest-700 w-4 h-4 cursor-pointer" checked={filtered.length > 0 && selectedIds.length === filtered.length} onChange={handleSelectAll} />
                   </th>
                   <th className="px-4 py-3">Pedido</th>
                   <th className="px-4 py-3">Cliente</th>
@@ -232,12 +226,7 @@ export default function AdminOrders() {
                 {filtered.map(order => (
                   <tr key={order.id} className={`transition-colors ${selectedIds.includes(order.id) ? 'bg-cream-50/80' : 'hover:bg-cream-50/40'}`}>
                     <td className="px-4 py-3 text-center">
-                      <input 
-                        type="checkbox" 
-                        className="rounded border-cream-300 text-forest-700 focus:ring-forest-700 w-4 h-4 cursor-pointer"
-                        checked={selectedIds.includes(order.id)}
-                        onChange={() => toggleSelection(order.id)}
-                      />
+                      <input type="checkbox" className="rounded border-cream-300 text-forest-700 focus:ring-forest-700 w-4 h-4 cursor-pointer" checked={selectedIds.includes(order.id)} onChange={() => toggleSelection(order.id)} />
                     </td>
                     <td className="px-4 py-3 font-mono font-bold text-forest-700">{order.orderNumber}</td>
                     <td className="px-4 py-3">
@@ -260,24 +249,20 @@ export default function AdminOrders() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1.5 items-center justify-end">
-                        <button onClick={() => setSelected(order)} className="p-1.5 text-sage-400 hover:text-forest-700 hover:bg-cream-100 rounded-lg transition-colors" title="Ver detalle">
+                        <button onClick={() => setSelected(order)} className="p-1.5 text-sage-400 hover:text-forest-700 hover:bg-cream-100 rounded-lg transition-colors cursor-pointer" title="Ver detalle">
                           <Eye size={16} />
                         </button>
-                        
                         {NEXT_STATUS[order.status] && (
-                          <Button size="sm" variant="primary" className="py-1 px-3 text-xs" onClick={() => updateStatus(order.id, NEXT_STATUS[order.status]!)} loading={updating}>
+                          <Button size="sm" variant="primary" className="py-1 px-3 text-xs cursor-pointer" onClick={() => updateStatus(order.id, NEXT_STATUS[order.status]!)} loading={updating}>
                             {ORDER_STATUS_LABELS[NEXT_STATUS[order.status]!]}
                           </Button>
                         )}
-                        
                         {order.status !== 'CANCELADO' && order.status !== 'ENTREGADO' && (
-                          <Button size="sm" className="bg-red-100 hover:bg-red-200 text-red-700 py-1 px-3 text-xs font-bold transition-colors" onClick={() => updateStatus(order.id, 'CANCELADO')} loading={updating}>
+                          <Button size="sm" className="bg-red-100 hover:bg-red-200 text-red-700 py-1 px-3 text-xs font-bold transition-colors cursor-pointer" onClick={() => updateStatus(order.id, 'CANCELADO')} loading={updating}>
                             Cancelar
                           </Button>
                         )}
-
-                        {/* Botón de papelera individual */}
-                        <button onClick={() => deleteOrders([order.id])} className="p-1.5 text-red-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-1" title="Eliminar pedido de la base de datos">
+                        <button onClick={() => deleteOrders([order.id])} className="p-1.5 text-red-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-1 cursor-pointer" title="Eliminar">
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -290,8 +275,7 @@ export default function AdminOrders() {
         )}
       </div>
 
-      {/* Modal de Detalle */}
-      <Modal open={!!selected} onClose={() => setSelected(null)} title={`Detalle - Pedido ${selected?.orderNumber}`} size="lg">
+      <Modal open={!!selected} onClose={() => { setSelected(null); window.history.replaceState(null, '', '/admin/orders'); }} title={`Detalle - Pedido ${selected?.orderNumber}`} size="lg">
         {selected && (
           <div className="space-y-4">
             <div className="bg-cream-50 border border-cream-200 rounded-xl p-4 space-y-2">
@@ -328,6 +312,7 @@ export default function AdminOrders() {
                     variant={selected.status === statusKey ? 'primary' : 'outline'} 
                     onClick={() => updateStatus(selected.id, statusKey)} 
                     loading={updating}
+                    className='cursor-pointer'
                   >
                     {ORDER_STATUS_LABELS[statusKey]}
                   </Button>

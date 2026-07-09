@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation'; // Necesitamos esto
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -52,7 +52,8 @@ const NEXT_STATUS: Record<string, string | null> = {
   CANCELADO: null
 };
 
-export default function AdminOrders() {
+// 1. Cambiamos el nombre de la función principal a OrdersContent (ya no es el export default)
+function OrdersContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -323,5 +324,14 @@ export default function AdminOrders() {
         )}
       </Modal>
     </div>
+  );
+}
+
+// 2. Exportamos un nuevo componente por defecto que envuelve el contenido con Suspense
+export default function AdminOrders() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-sage-400 animate-pulse font-medium">Cargando la interfaz de gestión...</div>}>
+      <OrdersContent />
+    </Suspense>
   );
 }

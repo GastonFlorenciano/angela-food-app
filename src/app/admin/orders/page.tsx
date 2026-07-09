@@ -5,7 +5,8 @@ import { useSearchParams } from 'next/navigation'; // Necesitamos esto
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
-import { Search, Eye, RefreshCw, Truck, Store, Trash2 } from 'lucide-react';
+// Agregamos el icono de Printer (Impresora)
+import { Search, Eye, RefreshCw, Truck, Store, Trash2, Printer } from 'lucide-react';
 
 interface OrderItem {
   name: string;
@@ -52,7 +53,6 @@ const NEXT_STATUS: Record<string, string | null> = {
   CANCELADO: null
 };
 
-// 1. Cambiamos el nombre de la función principal a OrdersContent (ya no es el export default)
 function OrdersContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,7 +83,7 @@ function OrdersContent() {
   // Carga inicial
   useEffect(() => { loadOrders(); }, []);
 
-  // [NUEVO] Escucha la URL y abre el modal si viene un ID
+  // Escucha la URL y abre el modal si viene un ID
   useEffect(() => {
     if (orderIdFromUrl && orders.length > 0) {
       const foundOrder = orders.find(o => o.orderNumber === orderIdFromUrl);
@@ -153,7 +153,7 @@ function OrdersContent() {
           <h1 className="font-serif text-3xl font-bold text-forest-700">Gestión de Pedidos</h1>
           <p className="text-sage-500 mt-0.5">{orders.length} órdenes en el historial</p>
         </div>
-        <Button variant="ghost" onClick={loadOrders} className="flex items-center gap-1.5 text-sm border border-cream-300">
+        <Button variant="ghost" onClick={loadOrders} className="flex items-center gap-1.5 text-sm border border-cream-300 cursor-pointer hover:bg-cream-100">
           <RefreshCw size={15} /> Actualizar lista
         </Button>
       </div>
@@ -179,7 +179,7 @@ function OrdersContent() {
             <button
               key={status}
               onClick={() => { setFilterStatus(status); setSelectedIds([]); }}
-              className={`whitespace-nowrap flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all ${
+              className={`whitespace-nowrap flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
                 filterStatus === status 
                   ? 'bg-forest-700 text-white shadow-md' 
                   : 'bg-white border border-cream-200 text-sage-600 hover:border-forest-300'
@@ -195,7 +195,7 @@ function OrdersContent() {
       {selectedIds.length > 0 && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-5 flex items-center justify-between animate-fadeIn shadow-sm">
           <span className="font-bold text-sm">{selectedIds.length} pedidos seleccionados</span>
-          <Button className="bg-red-500 hover:bg-red-600 text-white py-1.5 px-4 rounded-lg text-xs font-bold transition-colors" onClick={() => deleteOrders(selectedIds)} loading={updating}>
+          <Button className="bg-red-500 hover:bg-red-600 text-white py-1.5 px-4 rounded-lg text-xs font-bold transition-colors cursor-pointer" onClick={() => deleteOrders(selectedIds)} loading={updating}>
             <Trash2 size={14} className="mr-1.5 inline" /> Eliminar selección
           </Button>
         </div>
@@ -278,32 +278,50 @@ function OrdersContent() {
 
       <Modal open={!!selected} onClose={() => { setSelected(null); window.history.replaceState(null, '', '/admin/orders'); }} title={`Detalle - Pedido ${selected?.orderNumber}`} size="lg">
         {selected && (
-          <div className="space-y-4">
-            <div className="bg-cream-50 border border-cream-200 rounded-xl p-4 space-y-2">
-              <h4 className="font-bold text-forest-700 text-sm border-b border-cream-200 pb-1.5 mb-2">Productos Pedidos</h4>
+          // AGREGAMOS LA CLASE ticket-imprimible ACÁ
+          <div className="space-y-4 ticket-imprimible print:bg-white print:text-black">
+            
+            {/* ENCABEZADO OCULTO QUE SOLO APARECE AL IMPRIMIR */}
+            <div className="hidden print:block text-center mb-4 border-b border-black pb-4">
+              <h2 className="text-2xl font-black uppercase mb-1">Ángela Food</h2>
+              <p className="text-sm font-bold">Comanda #{selected.orderNumber}</p>
+              <p className="text-xs">{new Date(selected.createdAt).toLocaleString('es-AR')}</p>
+            </div>
+
+            {/* BOTÓN DE IMPRIMIR - DESAPARECE AL IMPRIMIR */}
+            <div className="flex justify-end no-imprimir">
+              <Button onClick={() => window.print()} className="flex items-center gap-2 cursor-pointer bg-slate-800 hover:bg-slate-900 text-white shadow-sm">
+                <Printer size={16} />
+                Imprimir Comanda
+              </Button>
+            </div>
+
+            <div className="bg-cream-50 border border-cream-200 rounded-xl p-4 space-y-2 print:border-none print:p-0">
+              <h4 className="font-bold text-forest-700 text-sm border-b border-cream-200 pb-1.5 mb-2 print:text-black print:border-black print:text-lg">Productos Pedidos</h4>
               {selected.items.map((item, i) => (
-                <div key={i} className="flex justify-between text-sm font-medium text-forest-700">
+                <div key={i} className="flex justify-between text-sm font-medium text-forest-700 print:text-black print:text-base print:py-1">
                   <span>{item.quantity}x {item.name}</span>
-                  <span className="font-bold text-terracotta-600">${item.subtotal.toLocaleString('es-AR')}</span>
+                  <span className="font-bold text-terracotta-600 print:text-black">${item.subtotal.toLocaleString('es-AR')}</span>
                 </div>
               ))}
-              <div className="border-t border-cream-200 pt-2 mt-2 flex justify-between font-black text-forest-700 text-base">
+              <div className="border-t border-cream-200 pt-2 mt-2 flex justify-between font-black text-forest-700 text-base print:text-black print:border-black print:text-lg print:pt-4">
                 <span>Total del Pedido</span>
-                <span className="text-terracotta-500">${selected.total.toLocaleString('es-AR')}</span>
+                <span className="text-terracotta-500 print:text-black">${selected.total.toLocaleString('es-AR')}</span>
               </div>
             </div>
             
-            <div className="text-sm font-medium space-y-1 bg-white p-4 border border-cream-100 rounded-xl">
-              <h4 className="font-bold text-forest-700 text-sm mb-1.5">Datos de Entrega</h4>
-              <p><span className="text-sage-400 font-semibold">Cliente:</span> {selected.customerName}</p>
-              <p><span className="text-sage-400 font-semibold">Teléfono:</span> {selected.customerPhone}</p>
-              <p><span className="text-sage-400 font-semibold">Dirección:</span> {selected.deliveryAddress}</p>
-              {selected.deliveryAddress !== 'Retiro en local' && <p><span className="text-sage-400 font-semibold">Barrio:</span> {selected.deliveryZone}</p>}
-              <p><span className="text-sage-400 font-semibold">Método de Pago:</span> {selected.paymentMethod}</p>
-              {selected.notes && <p><span className="text-sage-400 font-semibold">Notas especiales:</span> {selected.notes}</p>}
+            <div className="text-sm font-medium space-y-1 bg-white p-4 border border-cream-100 rounded-xl print:border-none print:p-0 print:pt-4">
+              <h4 className="font-bold text-forest-700 text-sm mb-1.5 print:text-black print:text-lg print:border-b print:border-black print:pb-1">Datos de Entrega</h4>
+              <p className="print:py-0.5"><span className="text-sage-400 font-semibold print:text-black">Cliente:</span> {selected.customerName}</p>
+              <p className="print:py-0.5"><span className="text-sage-400 font-semibold print:text-black">Teléfono:</span> {selected.customerPhone}</p>
+              <p className="print:py-0.5"><span className="text-sage-400 font-semibold print:text-black">Dirección:</span> {selected.deliveryAddress}</p>
+              {selected.deliveryAddress !== 'Retiro en local' && <p className="print:py-0.5"><span className="text-sage-400 font-semibold print:text-black">Barrio:</span> {selected.deliveryZone || 'No especificado'}</p>}
+              <p className="print:py-0.5"><span className="text-sage-400 font-semibold print:text-black">Método de Pago:</span> {selected.paymentMethod}</p>
+              <p className="print:py-0.5"><span className="text-sage-400 font-semibold print:text-black">Notas especiales:</span> {selected.notes || '-'}</p>
             </div>
 
-            <div className="pt-2">
+            {/* BOTONES DE ESTADO - DESAPARECEN AL IMPRIMIR */}
+            <div className="pt-2 no-imprimir">
               <h4 className="font-bold text-forest-700 text-xs uppercase tracking-wider mb-2 text-left">Cambiar estado manualmente</h4>
               <div className="flex flex-wrap gap-2">
                 {Object.keys(ORDER_STATUS_LABELS).map(statusKey => (
@@ -327,7 +345,6 @@ function OrdersContent() {
   );
 }
 
-// 2. Exportamos un nuevo componente por defecto que envuelve el contenido con Suspense
 export default function AdminOrders() {
   return (
     <Suspense fallback={<div className="p-8 text-center text-sage-400 animate-pulse font-medium">Cargando la interfaz de gestión...</div>}>

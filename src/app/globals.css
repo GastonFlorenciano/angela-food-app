@@ -12,3 +12,25 @@
     font-family: var(--font-playwrite), cursive !important;
   }
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  /* Esta clase se la ponemos al contenedor del ticket */
+  .ticket-imprimible, .ticket-imprimible * {
+    visibility: visible;
+  }
+  .ticket-imprimible {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm; /* Ancho estándar de ticketera */
+    padding: 10px;
+    font-family: monospace; /* Letra típica de ticket */
+  }
+  /* Esta clase oculta botones cuando se imprime */
+  .no-imprimir {
+    display: none !important;
+  }
+}

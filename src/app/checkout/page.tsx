@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input, Textarea, Select } from '@/components/ui/Input';
-import { ShoppingBag, Plus, Minus, Trash2, CheckCircle, ChevronRight, Search, ChevronLeft } from 'lucide-react';
+import { ShoppingBag, Plus, Minus, Trash2, CheckCircle, ChevronRight, Search, ChevronLeft, ChevronDown, ChevronsDown } from 'lucide-react';
 import { getPlaceholderImage } from '@/utils/images';
 
 interface MenuItem {
@@ -26,10 +26,8 @@ interface OrderItem {
   subtotal: number;
 }
 
-// 1. Modificado: Solo Efectivo y Transferencia
 const PAYMENT_METHODS = ['Efectivo', 'Transferencia'];
 const ITEMS_PER_PAGE = 6;
-// 2. Nuevo: Costo fijo de envío
 const DELIVERY_FEE = 2500;
 
 type Step = 'menu' | 'client' | 'confirm' | 'success';
@@ -59,7 +57,8 @@ export default function Checkout() {
   const [activeCategory, setActiveCategory] = useState('Todos');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'none' | 'asc' | 'desc'>('none');
-  const [currentPage, setCurrentPage] = useState(1);
+  
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const router = useRouter();
 
   useEffect(() => {
@@ -78,15 +77,12 @@ export default function Checkout() {
   }, []);
 
   const categories = ['Todos', ...Array.from(new Set(menuItems.map(item => item.category)))];
-  console.log(categories)
 
   let filtered = menuItems.filter(product => {
-    // 1. Normalizar búsqueda (minúsculas)
     const q = searchQuery.toLowerCase();
     const matchesSearch = product.name.toLowerCase().includes(q) ||
       product.description.toLowerCase().includes(q);
 
-    // 2. Normalizar categorías: minúsculas, sin acentos y sin espacios
     const normalize = (str: string) => 
       str.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
@@ -101,15 +97,11 @@ export default function Checkout() {
   if (sortOrder === 'asc') filtered.sort((a, b) => a.price - b.price);
   if (sortOrder === 'desc') filtered.sort((a, b) => b.price - a.price);
 
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const displayedItems = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const displayedItems = filtered.slice(0, visibleCount);
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  useEffect(() => { setCurrentPage(1); }, [searchQuery, activeCategory, sortOrder]);
+  useEffect(() => { 
+    setVisibleCount(ITEMS_PER_PAGE); 
+  }, [searchQuery, activeCategory, sortOrder]);
 
   function addToCart(item: MenuItem) {
     setCart(prev => {
@@ -134,7 +126,6 @@ export default function Checkout() {
     setCart(prev => prev.filter(c => c.id !== id));
   }
 
-  // 3. Modificado: Cálculos dinámicos con envío
   const subtotal = cart.reduce((sum, i) => sum + i.subtotal, 0);
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
   const finalTotal = deliveryType === 'delivery' ? subtotal + DELIVERY_FEE : subtotal;
@@ -168,7 +159,7 @@ export default function Checkout() {
       deliveryZone: deliveryType === 'delivery' ? client.neighborhood : '-',
       paymentMethod: client.paymentMethod,
       notes: client.notes,
-      total: finalTotal, // Pasamos el total ya sumado
+      total: finalTotal,
       items: cart.map(item => ({ id: item.id, name: item.name, quantity: item.quantity, price: item.price, subtotal: item.subtotal }))
     };
     try {
@@ -228,7 +219,7 @@ export default function Checkout() {
 
       {step === 'menu' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-6 relative pb-10">
             <div className="flex flex-col gap-3 border-b border-gray-400 p-2">
               <div className='flex gap-2'>
                 <div className="relative w-full sm:max-w-xs">
@@ -236,7 +227,7 @@ export default function Checkout() {
                   <input type="text" placeholder="Buscar especialidad..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-9 pr-4 py-2 border border-gray-400 rounded-xl text-sm focus:outline-cream-500 bg-white" />
                 </div>
-                <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as any)} className="px-4 py-2 border border-gray-400 rounded-xl text-sm font-bold text-slate-700 bg-white">
+                <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as any)} className="px-4 py-2 border border-gray-400 rounded-xl text-sm font-bold text-slate-700 bg-white cursor-pointer">
                   <option value="none">Precio: Original</option>
                   <option value="asc">Menor a Mayor</option>
                   <option value="desc">Mayor a Menor</option>
@@ -250,49 +241,75 @@ export default function Checkout() {
               </div>
             </div>
 
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentPage}
-                initial={{ opacity: 0, x: 80 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -80 }}
-                transition={{ duration: 0.35, ease: "easeInOut" }}
-                className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {displayedItems.map(item => {
-                  const qty = getQty(item.id);
-                  const displayImage = item.imageUrl || getPlaceholderImage(item.category);
-                  return (
-                    <div key={item.id} className="bg-white rounded-2xl border border-cream-200 overflow-hidden flex flex-col justify-between hover:shadow-sm transition-all duration-200">
-                      <div className="relative h-40 bg-cream-50 w-full border-b border-cream-100 flex items-center justify-center">
-                        {displayImage ? <img src={displayImage} alt={item.name} className="w-full h-full object-cover" /> : <ShoppingBag size={32} className="text-cream-300" />}
-                        <span className="absolute top-2.5 left-2.5 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-[9px] font-black uppercase text-slate-700">{item.category}</span>
-                      </div>
-                      <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                        <h3 className="font-serif font-bold text-base text-forest-700">{item.name}</h3>
-                        <p className="text-sm text-slate-500 leading-relaxed line-clamp-3">{item.description}</p>
-                        <p className="font-black text-terracotta-500 text-base">${item.price.toLocaleString('es-AR')}</p>
-                        <div className="pt-2">
-                          {qty === 0 ? <Button variant="primary" className="w-full py-2 text-xs cursor-pointer" onClick={() => addToCart(item)}>+ Agregar</Button>
-                            : <div className="flex items-center justify-between bg-cream-200 border border-cream-100 rounded-xl p-1"><button onClick={() => removeFromCart(item.id)} className="w-7 h-7 bg-white rounded-lg flex justify-center items-center cursor-pointer"><Minus size={12} /></button><span className="text-xs font-black">{qty}</span><button onClick={() => addToCart(item)} className="w-7 h-7 bg-terracotta-500 text-white rounded-lg flex justify-center items-center cursor-pointer"><Plus size={12} /></button></div>}
+            <div className="relative">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key="grid"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-6 relative"
+                >
+                  {/* Tarjetas Visibles */}
+                  {displayedItems.map(item => {
+                    const qty = getQty(item.id);
+                    const displayImage = item.imageUrl || getPlaceholderImage(item.category);
+                    return (
+                      <div key={item.id} className="bg-white rounded-2xl border border-cream-200 overflow-hidden flex flex-col justify-between hover:shadow-sm transition-all duration-200 z-10">
+                        <div className="relative h-40 bg-cream-50 w-full border-b border-cream-100 flex items-center justify-center">
+                          {displayImage ? <img src={displayImage} alt={item.name} className="w-full h-full object-cover" /> : <ShoppingBag size={32} className="text-cream-300" />}
+                          <span className="absolute top-2.5 left-2.5 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-[9px] font-black uppercase text-slate-700">{item.category}</span>
+                        </div>
+                        <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                          <h3 className="font-serif font-bold text-base text-forest-700">{item.name}</h3>
+                          <p className="text-sm text-slate-500 leading-relaxed line-clamp-3">{item.description}</p>
+                          <p className="font-black text-terracotta-500 text-base">${item.price.toLocaleString('es-AR')}</p>
+                          <div className="pt-2">
+                            {qty === 0 ? <Button variant="primary" className="w-full py-2 text-xs cursor-pointer" onClick={() => addToCart(item)}>+ Agregar</Button>
+                              : <div className="flex items-center justify-between bg-cream-200 border border-cream-100 rounded-xl p-1"><button onClick={() => removeFromCart(item.id)} className="w-7 h-7 bg-white rounded-lg flex justify-center items-center cursor-pointer"><Minus size={12} /></button><span className="text-xs font-black">{qty}</span><button onClick={() => addToCart(item)} className="w-7 h-7 bg-terracotta-500 text-white rounded-lg flex justify-center items-center cursor-pointer"><Plus size={12} /></button></div>}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </motion.div>
-            </AnimatePresence>
+                    );
+                  })}
 
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-4 mt-6">
-                <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className={`${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-terracotta-500 hover:text-white'}`}>Anterior</Button>
-                <span className="font-bold text-sm">Pág. {currentPage} de {totalPages}</span>
-                <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className={`${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-terracotta-500 hover:text-white'}`}>Siguiente</Button>
-              </div>
-            )}
+                  {/* EFECTO: Tarjetas "asomándose". Se oculta la segunda en mobile con 'hidden sm:flex' */}
+                  {visibleCount < filtered.length && filtered.slice(visibleCount, visibleCount + 2).map((item, index) => {
+                    const displayImage = item.imageUrl || getPlaceholderImage(item.category);
+                    return (
+                      <div 
+                        key={`peek-${item.id}`} 
+                        className={`bg-white rounded-t-2xl border-x border-t border-cream-200 overflow-hidden flex-col z-0 h-28 pointer-events-none select-none relative opacity-90 ${index === 1 ? 'hidden sm:flex' : 'flex'}`}
+                      >
+                        <div className="relative h-28 w-full flex items-center justify-center">
+                          {displayImage ? <img src={displayImage} alt={item.name} className="w-full h-full object-cover" /> : <ShoppingBag size={32} className="text-cream-300" />}
+                          <span className="absolute top-2.5 left-2.5 bg-white/90 shadow-sm px-2 py-0.5 rounded-full text-[9px] font-black uppercase text-slate-700 z-10">{item.category}</span>
+                          <div className="absolute inset-0 backdrop-blur-xs bg-white/30 mask-[linear-gradient(to_bottom,transparent_30%,black_90%)] z-0" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Botón de VER MÁS con animación de rebote y estilos arreglados */}
+              {visibleCount < filtered.length && (
+                <div className="absolute -bottom-10 sm:-bottom-4 left-0 w-full flex justify-center items-center sm:items-end pb-8 z-20 h-40 sm:h-32 bg-linear-to-t from-white via-background to-transparent pointer-events-none">
+                  <Button
+                    variant="primary"
+                    onClick={() => setVisibleCount(filtered.length)}
+                    className="pointer-events-auto flex items-end justify-center gap-1 cursor-pointer transition-all h-auto py-2 px-6"
+                  >
+                    <span className='font-extrabold'>Ver más</span>
+                    <ChevronsDown size={20} className="animate-bounce" />
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="lg:sticky lg:top-24 h-fit">
-            <div className="bg-white rounded-2xl border border-cream-200 p-5 shadow-sm">
+            <div className="bg-white rounded-2xl border border-cream-500 p-5 shadow-lg">
               <h2 className="font-serif font-bold text-forest-700 text-lg mb-4 flex items-center gap-2">
                 <ShoppingBag size={18} className="text-terracotta-500" />
                 Tu Carrito
@@ -436,7 +453,7 @@ export default function Checkout() {
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button variant="ghost" onClick={() => setStep('client')}>Volver</Button>
+              <Button variant="ghost" onClick={() => setStep('client')} className='cursor-pointer'>Volver</Button>
               <Button variant="primary" className="flex-1 cursor-pointer" loading={loading} onClick={submitOrder}>
                 Confirmar pedido
               </Button>

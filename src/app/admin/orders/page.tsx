@@ -1,11 +1,10 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation'; // Necesitamos esto
+import { useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
-// Agregamos el icono de Printer (Impresora)
 import { Search, Eye, RefreshCw, Truck, Store, Trash2, Printer } from 'lucide-react';
 
 interface OrderItem {
@@ -65,23 +64,35 @@ function OrdersContent() {
   const searchParams = useSearchParams();
   const orderIdFromUrl = searchParams.get('orderId');
 
-  async function loadOrders() {
-    setLoading(true);
+  // Agregamos showSpinner para que no parpadee al hacer el polling
+  async function loadOrders(showSpinner = true) {
+    if (showSpinner) setLoading(true);
     try {
-      const res = await fetch('/api/admin/orders');
+      const res = await fetch(`/api/admin/orders?_t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         setOrders(data);
+        
+        // Si hay un modal abierto, actualizamos sus datos por si alguien más le cambió el estado
+        setSelected(prevSelected => {
+          if (!prevSelected) return null;
+          const updatedOrder = data.find((o: Order) => o.id === prevSelected.id);
+          return updatedOrder || prevSelected;
+        });
       }
     } catch (e) {
       console.error('Error cargando órdenes:', e);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   }
 
-  // Carga inicial
-  useEffect(() => { loadOrders(); }, []);
+  // Carga inicial y Polling automático
+  useEffect(() => {
+    loadOrders(true);
+    const interval = setInterval(() => loadOrders(false), 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Escucha la URL y abre el modal si viene un ID
   useEffect(() => {
@@ -153,7 +164,7 @@ function OrdersContent() {
           <h1 className="font-serif text-3xl font-bold text-forest-700">Gestión de Pedidos</h1>
           <p className="text-sage-500 mt-0.5">{orders.length} órdenes en el historial</p>
         </div>
-        <Button variant="ghost" onClick={loadOrders} className="flex items-center gap-1.5 text-sm border border-cream-300 cursor-pointer hover:bg-cream-100">
+        <Button variant="ghost" onClick={() => loadOrders(true)} className="flex items-center gap-1.5 text-sm border border-cream-300 cursor-pointer hover:bg-cream-100">
           <RefreshCw size={15} /> Actualizar lista
         </Button>
       </div>
@@ -201,7 +212,7 @@ function OrdersContent() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-cream-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-cream-200 shadow-sm overflow-hidden transition-all hover:shadow-md">
         {loading ? (
           <div className="p-8 text-center text-sage-400 animate-pulse font-medium">Cargando la lista de pedidos...</div>
         ) : filtered.length === 0 ? (
@@ -278,7 +289,6 @@ function OrdersContent() {
 
       <Modal open={!!selected} onClose={() => { setSelected(null); window.history.replaceState(null, '', '/admin/orders'); }} title={`Detalle - Pedido ${selected?.orderNumber}`} size="lg">
         {selected && (
-          // AGREGAMOS LA CLASE ticket-imprimible ACÁ
           <div className="space-y-4 ticket-imprimible print:bg-white print:text-black">
             
             {/* ENCABEZADO OCULTO QUE SOLO APARECE AL IMPRIMIR */}

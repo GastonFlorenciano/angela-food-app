@@ -42,10 +42,12 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function loadStats() {
-    setLoading(true);
+  // Agregamos showSpinner para hacer actualizaciones silenciosas
+  async function loadStats(showSpinner = true) {
+    if (showSpinner) setLoading(true);
     try {
-      const res = await fetch('/api/admin/stats');
+      // Agregamos Date.now() para evitar que el navegador cachee la respuesta
+      const res = await fetch(`/api/admin/stats?_t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         setStats(data);
@@ -53,12 +55,17 @@ export default function AdminDashboard() {
     } catch (e) {
       console.error('Error cargando estadísticas:', e);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   }
 
   useEffect(() => {
-    loadStats();
+    // Carga inicial con spinner
+    loadStats(true);
+    
+    // Intervalo silencioso cada 10 segundos
+    const interval = setInterval(() => loadStats(false), 10000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -69,7 +76,7 @@ export default function AdminDashboard() {
           <h1 className="font-display text-3xl font-extrabold text-slate-900">Panel de Control</h1>
           <p className="text-slate-500 mt-1">Resumen operativo de Ángela en tiempo real.</p>
         </div>
-        <Button variant="outline" onClick={loadStats} className="flex items-center gap-1.5 border-gray-300 font-semibold" disabled={loading}>
+        <Button variant="outline" onClick={() => loadStats(true)} className="flex items-center gap-1.5 border-gray-300 font-semibold cursor-pointer hover:bg-cream-100" disabled={loading}>
           <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Actualizar Datos
         </Button>
       </div>
@@ -81,7 +88,7 @@ export default function AdminDashboard() {
           <div className="space-y-8">
             {/* Grilla de Reporte (KPIs) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex items-center justify-between">
+              <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex items-center justify-between transition-all hover:shadow-md">
                 <div className="space-y-2">
                   <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">Ingresos Totales</p>
                   <p className="text-3xl font-black text-slate-900">${stats.totalRevenue.toLocaleString('es-AR')}</p>
@@ -91,7 +98,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex items-center justify-between">
+              <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex items-center justify-between transition-all hover:shadow-md">
                 <div className="space-y-2">
                   <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">Pedidos en Curso</p>
                   <p className="text-3xl font-black text-slate-900">{stats.activeOrdersCount}</p>
@@ -101,7 +108,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex items-center justify-between">
+              <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex items-center justify-between transition-all hover:shadow-md">
                 <div className="space-y-2">
                   <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">Platos en Menú</p>
                   <p className="text-3xl font-black text-slate-900">{stats.totalProducts}</p>
@@ -113,7 +120,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Historial Reciente */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden transition-all hover:shadow-md">
               <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                 <h3 className="font-bold text-lg text-slate-900">Últimos Pedidos Recibidos</h3>
                 <Link href="/admin/orders" className="text-sm font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 transition-colors">

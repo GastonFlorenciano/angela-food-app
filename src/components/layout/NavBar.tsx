@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+// Agregamos useRef a las importaciones de React
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X, ShoppingBag, Star, Package, Home, LayoutDashboard, UtensilsCrossed, LogOut, LogIn, Bell, Trash } from 'lucide-react';
@@ -44,6 +45,10 @@ export function Navbar() {
   const [hasUnread, setHasUnread] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   
+  // Referencias para controlar el sonido de las notificaciones
+  const isFirstLoad = useRef(true);
+  const prevPendingIds = useRef<string[]>([]);
+  
   const pathname = usePathname();
   const router = useRouter();
   const isAdminRoute = pathname?.startsWith('/admin');
@@ -76,6 +81,25 @@ export function Navbar() {
           
           const sorted = pending.sort((a: any, b: any) => new Date(b.created_at || b.createdAt || 0).getTime() - new Date(a.created_at || a.createdAt || 0).getTime());
           
+          // --- LÓGICA DE SONIDO ---
+          const currentIds = sorted.map((o: any) => o.id);
+          
+          if (!isFirstLoad.current) {
+            // Verificamos si hay algún ID nuevo que no estaba en la consulta anterior
+            const hasBrandNewOrder = currentIds.some((id: string) => !prevPendingIds.current.includes(id));
+            
+            if (hasBrandNewOrder) {
+              const audio = new Audio('/sounds/notification.mp3');
+              // El catch evita que la app se rompa si el navegador bloquea el autoplay
+              audio.play().catch(e => console.log('El navegador bloqueó la reproducción de audio automática:', e));
+            }
+          }
+          
+          // Actualizamos nuestras referencias
+          prevPendingIds.current = currentIds;
+          isFirstLoad.current = false;
+          // ------------------------
+          
           // Si alguno de los pedidos no está en la lista de "vistos", prendemos el puntito rojo
           const hasNew = sorted.some((o: any) => !seenList.includes(o.id));
           setHasUnread(hasNew);
@@ -88,7 +112,7 @@ export function Navbar() {
     };
 
     fetchPendingOrders();
-    const interval = setInterval(fetchPendingOrders, 15000);
+    const interval = setInterval(fetchPendingOrders, 10000);
     return () => clearInterval(interval);
   }, [isAdminRoute]);
 

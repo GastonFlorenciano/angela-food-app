@@ -293,7 +293,7 @@ function OrdersContent() {
             
             {/* ENCABEZADO OCULTO QUE SOLO APARECE AL IMPRIMIR */}
             <div className="hidden print:block text-center mb-4 border-b border-black pb-4">
-              <h2 className="text-2xl font-black uppercase mb-1">Ángela Food</h2>
+              <h2 className="text-2xl font-black uppercase mb-1">Ángela</h2>
               <p className="text-sm font-bold">Comanda #{selected.orderNumber}</p>
               <p className="text-xs">{new Date(selected.createdAt).toLocaleString('es-AR')}</p>
             </div>

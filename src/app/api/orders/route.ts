@@ -70,11 +70,11 @@ export async function POST(req: Request) {
 
       if (paymentMethod === 'Efectivo') {
 
-        waMessage = `¡Hola ${customerName}! Recibimos tu pedido. El total es de $${total} para abonar en efectivo al retirar. Nos comunicaremos por este medio para que pases a retirar. ¡Gracias!`;
+        waMessage = `¡Hola ${customerName}! Recibimos tu pedido. El total es de *$${total}* para abonar en efectivo al retirar. Nos comunicaremos en la brevedad para que pases a retirar. ¡Gracias!`;
 
       } else {
 
-        waMessage = `¡Hola ${customerName}! Recibimos tu pedido. El total es de $${total}. Nos comunicaremos por este medio para que pases a retirar. ¡Gracias!`;
+        waMessage = `¡Hola ${customerName}! Recibimos tu pedido. El total es de *$${total}*.\n\nAlias: *angela1704*\n\nNombre: *Elisa Belen Britez*\n\nEnvianos el comprobante por este medio para confirmarlo.\n\nNos comunicaremos en la brevedad para que pases a retirar. ¡Gracias!`;
 
       }
 
@@ -84,11 +84,11 @@ export async function POST(req: Request) {
 
       if (paymentMethod === 'Efectivo') {
 
-        waMessage = `¡Hola ${customerName}! Recibimos tu pedido. El total es de $${total} para abonar en efectivo. En la brevedad te confirmamos tu pedido. ¡Gracias!\n\nPara ver el seguimiento: Ingresá en *Mi pedido > Ingresá tu código: ${fullOrderNumber} > Buscar.*`;
+        waMessage = `¡Hola ${customerName}! Recibimos tu pedido. El total es de *$${total}* para abonar en efectivo. En la brevedad te confirmamos tu pedido. ¡Gracias!\n\nPara ver el seguimiento: Ingresá en *Mi pedido > Ingresá tu código: ${fullOrderNumber} > Buscar.*`;
 
       } else {
 
-        waMessage = `¡Hola ${customerName}! Recibimos tu pedido. El total es de $${total}. Por favor, transferí al alias: ANGELA.SABORES y envianos el comprobante por este medio para confirmarlo. ¡Gracias!\n\nPara ver el seguimiento: Ingresá en *Mi pedido > Ingresá tu código: ${fullOrderNumber} > Buscar.*`;
+        waMessage = `¡Hola ${customerName}! Recibimos tu pedido. El total es de *$${total}*.\n\nAlias: *angela1704*\n\nNombre: *Elisa Belen Britez*\n\nEnvianos el comprobante por este medio para confirmarlo. ¡Gracias!\n\nPara ver el seguimiento: Ingresá en *Mi pedido > Ingresá tu código: ${fullOrderNumber} > Buscar.*`;
 
       }
 

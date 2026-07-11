@@ -18,7 +18,7 @@ interface Order {
   order_number: string;
   delivery_type: 'delivery' | 'takeaway';
   total: number;
-  status: 'PENDIENTE' | 'EN_PREPARACION' | 'EN_CAMINO' | 'ENTREGADO' | 'CANCELADO';
+  status: 'PENDIENTE' | 'EN_PREPARACION' | 'LISTO' | 'EN_CAMINO' | 'ENTREGADO' | 'CANCELADO';
   created_at: string;
   notes?: string;
   clientName: string;
@@ -27,11 +27,10 @@ interface Order {
   items: OrderItem[];
 }
 
-const STATUS_STEPS = ['PENDIENTE', 'EN_PREPARACION', 'EN_CAMINO', 'ENTREGADO'];
-
 const ORDER_STATUS_LABELS: Record<string, string> = {
   PENDIENTE: 'Pendiente',
   EN_PREPARACION: 'En cocina',
+  LISTO: 'Listo para retirar',
   EN_CAMINO: 'En camino',
   ENTREGADO: 'Entregado',
   CANCELADO: 'Cancelado'
@@ -40,16 +39,15 @@ const ORDER_STATUS_LABELS: Record<string, string> = {
 const ORDER_STATUS_COLORS: Record<string, string> = {
   PENDIENTE: 'bg-amber-100 text-amber-800 border-amber-200',
   EN_PREPARACION: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+  LISTO: 'bg-green-100 text-green-800 border-green-200',
   EN_CAMINO: 'bg-blue-100 text-blue-800 border-blue-200',
-  ENTREGADO: 'bg-green-100 text-green-800 border-green-200',
+  ENTREGADO: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   CANCELADO: 'bg-rose-100 text-rose-800 border-rose-200'
 };
 
-// --- COMPONENTE INTERNO: Lógica de seguimiento ---
-// Lo separamos para poder envolverlo en <Suspense>, requisito de Next.js al usar useSearchParams
 function TrackingContent() {
   const searchParams = useSearchParams();
-  const urlOrderId = searchParams?.get('id'); // Atrapa el ?id=ORD-0003
+  const urlOrderId = searchParams?.get('id');
 
   const [query, setQuery] = useState('');
   const [order, setOrder] = useState<Order | null>(null);
@@ -57,12 +55,11 @@ function TrackingContent() {
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState('');
 
-  // 1. Auto-completado y búsqueda instantánea
   useEffect(() => {
     if (urlOrderId) {
-      setQuery(urlOrderId); // Rellena el input
+      setQuery(urlOrderId);
       setSearched(true);
-      checkOrderStatus(urlOrderId, false); // Ejecuta la búsqueda automáticamente
+      checkOrderStatus(urlOrderId, false);
     }
   }, [urlOrderId]);
 
@@ -107,7 +104,13 @@ function TrackingContent() {
     return () => clearInterval(interval);
   }, [order]);
 
-  const stepIndex = order ? STATUS_STEPS.indexOf(order.status) : -1;
+  // Determinamos dinámicamente los pasos según el tipo de pedido
+  const isTakeaway = order?.delivery_type === 'takeaway' || order?.clientAddress === 'Retiro en local';
+  const currentSteps = isTakeaway
+    ? ['PENDIENTE', 'EN_PREPARACION', 'LISTO', 'ENTREGADO']
+    : ['PENDIENTE', 'EN_PREPARACION', 'EN_CAMINO', 'ENTREGADO'];
+
+  const stepIndex = order ? currentSteps.indexOf(order.status) : -1;
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 min-h-[80vh] bg-white text-slate-800">
@@ -126,7 +129,7 @@ function TrackingContent() {
             error={searched && !order ? error : undefined}
             className="flex-1 text-slate-900 bg-white border-gray-300 font-medium"
           />
-          <Button onClick={handleSearch} loading={loading} className="shrink-0 bg-orange-600 hover:bg-orange-700 text-white font-bold">
+          <Button onClick={handleSearch} loading={loading} className="shrink-0 bg-orange-600 hover:bg-orange-700 text-white font-bold cursor-pointer">
             <Search size={16} className="mr-1 inline" /> Buscar
           </Button>
         </div>
@@ -164,7 +167,7 @@ function TrackingContent() {
                 </div>
 
                 <div className="flex justify-between relative" style={{ zIndex: 2 }}>
-                  {STATUS_STEPS.map((s, i) => {
+                  {currentSteps.map((s, i) => {
                     const isCurrent = i === stepIndex;
                     const isPast = i <= stepIndex;
 
@@ -227,8 +230,6 @@ function TrackingContent() {
   );
 }
 
-// --- CONTENEDOR PRINCIPAL ---
-// Envuelve el componente en un Suspense para cumplir con las reglas de Next.js para Client Components que leen URLs
 export default function OrderTracking() {
   return (
     <Suspense fallback={<div className="min-h-screen flex items-center justify-center font-bold text-slate-500">Cargando seguimiento...</div>}>

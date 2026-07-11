@@ -15,7 +15,34 @@ const prisma = new PrismaClient({ adapter });
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // ============================================================================
-// NUEVO: Función GET para que la campanita de la Navbar pueda leer los pedidos
+// FUNCIÓN AUXILIAR: Enviar WhatsApp Automático (Vía UltraMsg)
+// ============================================================================
+async function sendWhatsAppMessage(phone: string, message: string) {
+  const instanceId = process.env.ULTRAMSG_INSTANCE_ID;
+  const token = process.env.ULTRAMSG_TOKEN;
+  
+  if (!instanceId || !token) {
+    console.warn('Faltan credenciales de WhatsApp API en el archivo .env');
+    return;
+  }
+
+  try {
+    await fetch(`https://api.ultramsg.com/${instanceId}/messages/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: token,
+        to: phone,
+        body: message
+      })
+    });
+  } catch (error) {
+    console.error('Error enviando WhatsApp automático:', error);
+  }
+}
+
+// ============================================================================
+// Función GET para que la campanita de la Navbar pueda leer los pedidos
 // ============================================================================
 export async function GET() {
   try {
@@ -28,7 +55,7 @@ export async function GET() {
 }
 
 // ============================================================================
-// Función POST (Crear el pedido, mandar WhatsApp e Email)
+// Función POST (Crear el pedido, mandar WhatsApp automatizado e Email al admin)
 // ============================================================================
 export async function POST(req: Request) {
   try {
@@ -57,7 +84,7 @@ export async function POST(req: Request) {
 
     const fullOrderNumber = `ORD-${newOrder.orderNumber.toString().padStart(4, '0')}`;
 
-    // 2. Lógica para el link de WhatsApp
+    // 2. Preparar el número para la API de WhatsApp
     const cleanPhone = customerPhone.replace(/\D/g, '');
     const waPhone = cleanPhone.startsWith('54') ? cleanPhone : `549${cleanPhone}`;
 
@@ -65,38 +92,26 @@ export async function POST(req: Request) {
     const isTakeaway = deliveryAddress === 'Retiro en local' || deliveryZone === '-';
 
     if (isTakeaway) {
-
-      // Mensaje para RETIRO EN LOCAL
-
       if (paymentMethod === 'Efectivo') {
-
-        waMessage = `¡Hola ${customerName}! Recibimos tu pedido. El total es de *$${total}* para abonar en efectivo al retirar. Nos comunicaremos en la brevedad para que pases a retirar. ¡Gracias!`;
-
+        waMessage = `¡Hola ${customerName}! Recibimos tu pedido (${fullOrderNumber}). El total es de *$${total}* para abonar en efectivo al retirar.\n\nPara ver el estado del pedido: Ingresá a nuestra web *Mi pedido > Ingresá tu código: ${fullOrderNumber}*.\n\nNos comunicaremos en la brevedad cuando esté listo. ¡Gracias!`;
       } else {
-
-        waMessage = `¡Hola ${customerName}! Recibimos tu pedido. El total es de *$${total}*.\n\nAlias: *angela1704*\n\nNombre: *Elisa Belen Britez*\n\nEnvianos el comprobante por este medio para confirmarlo.\n\nNos comunicaremos en la brevedad para que pases a retirar. ¡Gracias!`;
-
+        waMessage = `¡Hola ${customerName}! Recibimos tu pedido (${fullOrderNumber}). El total es de *$${total}*.\n\nAlias: *angela1704*\n\nNombre: *Elisa Belen Britez*\n\nEnvianos el comprobante por este medio para confirmarlo.\n\nPara ver el estado del pedido: Ingresá a nuestra web *Mi pedido > Ingresá tu código: ${fullOrderNumber}*.\n\nNos comunicaremos en la brevedad cuando esté listo para retirar. ¡Gracias!`;
       }
-
     } else {
-
-      // Mensaje para DELIVERY
-
       if (paymentMethod === 'Efectivo') {
-
-        waMessage = `¡Hola ${customerName}! Recibimos tu pedido. El total es de *$${total}* para abonar en efectivo. En la brevedad te confirmamos tu pedido. ¡Gracias!\n\nPara ver el seguimiento: Ingresá en *Mi pedido > Ingresá tu código: ${fullOrderNumber} > Buscar.*`;
-
+        waMessage = `¡Hola ${customerName}! Recibimos tu pedido (${fullOrderNumber}). El total es de *$${total}* para abonar en efectivo. En la brevedad te lo preparamos y enviamos. ¡Gracias!\n\nPara ver el estado del pedido: Ingresá a nuestra web *Mi pedido > Ingresá tu código: ${fullOrderNumber}*.\n\nNos comunicaremos en la brevedad cuando esté en camino. ¡Gracias!`;
       } else {
-
-        waMessage = `¡Hola ${customerName}! Recibimos tu pedido. El total es de *$${total}*.\n\nAlias: *angela1704*\n\nNombre: *Elisa Belen Britez*\n\nEnvianos el comprobante por este medio para confirmarlo. ¡Gracias!\n\nPara ver el seguimiento: Ingresá en *Mi pedido > Ingresá tu código: ${fullOrderNumber} > Buscar.*`;
-
+        waMessage = `¡Hola ${customerName}! Recibimos tu pedido (${fullOrderNumber}). El total es de *$${total}*.\n\nAlias: *angela1704*\n\nNombre: *Elisa Belen Britez*\n\nEnvianos el comprobante por este medio para confirmarlo.\n\nPara ver el estado del pedido: Ingresá a nuestra web *Mi pedido > Ingresá tu código: ${fullOrderNumber}*.\n\nNos comunicaremos en la brevedad cuando esté en camino. ¡Gracias!`;
       }
-
     }
 
-    const waLink = `https://wa.me/${waPhone}?text=${encodeURIComponent(waMessage)}`;
+    // DISPARO DEL MENSAJE AUTOMÁTICO AL CLIENTE (Si la API falla, queda el backup en el correo)
+    await sendWhatsAppMessage(waPhone, waMessage);
 
-    // 3. Obtener la Fecha y Hora Exacta en formato Argentino
+    // Creamos el Link nativo de WhatsApp como Plan B para el correo del administrador
+    const waLinkFallback = `https://wa.me/${waPhone}?text=${encodeURIComponent(waMessage)}`;
+
+    // 3. Obtener la Fecha y Hora Exacta en formato Argentino (para el mail del admin)
     const now = new Date();
     const formattedDate = new Intl.DateTimeFormat('es-AR', {
       timeZone: 'America/Argentina/Buenos_Aires',
@@ -133,21 +148,22 @@ export async function POST(req: Request) {
         <h3 style="color: #ea580c; font-size: 20px;">Total: $${total}</h3>
         
         <br />
-        <a href="${waLink}" style="display: inline-block; background-color: #25D366; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
-          💬 Contactar por WhatsApp para cobrar
+        <a href="${waLinkFallback}" style="display: inline-block; background-color: #25D366; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+          💬 Contactar por WhatsApp (Backup)
         </a>
       </div>
     `;
 
-    // 5. Disparar el email con Resend
+    // 5. Disparar el email con Resend para avisar al administrador
     if (process.env.RESEND_API_KEY) {
       await resend.emails.send({
         from: 'Pedidos Angela <onboarding@resend.dev>',
-        to: process.env.OWNER_EMAIL || 'tucorreo@gmail.com',
+        to: process.env.OWNER_EMAIL || 'rflorenciano7@gmail.com',
         subject: `Nuevo Pedido ${fullOrderNumber} - ${customerName}`,
         html: emailHtml
       });
     }
+
     return NextResponse.json({ success: true, orderNumber: fullOrderNumber }, { status: 201 });
   } catch (error) {
     console.error('Error procesando pedido:', error);

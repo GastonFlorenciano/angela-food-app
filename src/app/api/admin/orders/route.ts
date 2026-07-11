@@ -1,11 +1,59 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, OrderStatus } from '@prisma/client'; // Importamos el Enum
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
+
+// ============================================================================
+// NUEVO: Agregamos el nuevo estado LISTO a la visualización
+// ============================================================================
+const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  PENDIENTE: 'Pendiente',
+  EN_PREPARACION: 'En cocina',
+  LISTO: 'Listo para retirar', // <--- Agregamos este label
+  EN_CAMINO: 'En camino',
+  ENTREGADO: 'Entregado',
+  CANCELADO: 'Cancelado'
+};
+
+const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
+  PENDIENTE: 'bg-amber-100 text-amber-800 border-amber-200',
+  EN_PREPARACION: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+  LISTO: 'bg-green-100 text-green-800 border-green-200', // <--- Agregamos este color
+  EN_CAMINO: 'bg-blue-100 text-blue-800 border-blue-200',
+  ENTREGADO: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  CANCELADO: 'bg-rose-100 text-rose-800 border-rose-200'
+};
+
+// ============================================================================
+// FUNCIÓN AUXILIAR: Enviar WhatsApp Automático (Vía UltraMsg)
+// ============================================================================
+async function sendWhatsAppMessage(phone: string, message: string) {
+  const instanceId = process.env.ULTRAMSG_INSTANCE_ID;
+  const token = process.env.ULTRAMSG_TOKEN;
+  
+  if (!instanceId || !token) {
+    console.warn('Faltan credenciales de WhatsApp API en el archivo .env');
+    return;
+  }
+
+  try {
+    await fetch(`https://api.ultramsg.com/${instanceId}/messages/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: token,
+        to: phone,
+        body: message
+      })
+    });
+  } catch (error) {
+    console.error('Error enviando WhatsApp automático:', error);
+  }
+}
 
 // GET: Traer todas las órdenes para el panel del administrador
 export async function GET() {
@@ -33,7 +81,7 @@ export async function GET() {
       deliveryZone: order.deliveryZone,
       paymentMethod: order.paymentMethod,
       notes: order.notes,
-      status: order.status, // PENDIENTE, EN_PREPARACION, etc.
+      status: order.status, // PENDIENTE, EN_PREPARACION, LISTO, etc.
       total: order.total,
       createdAt: order.createdAt,
       items: order.items.map(item => ({
@@ -52,7 +100,7 @@ export async function GET() {
   }
 }
 
-// PATCH: Cambiar el estado de un pedido (Ej: de PENDIENTE a EN_PREPARACION)
+// PATCH: Cambiar el estado de un pedido y mandar alerta condicional por WhatsApp
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
@@ -62,10 +110,52 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Faltan parámetros obligatorios.' }, { status: 400 });
     }
 
+    // Primero buscamos el pedido actual para saber su tipo y estado anterior
+    const currentOrder = await prisma.order.findUnique({
+      where: { id: orderId }
+    });
+
+    if (!currentOrder) {
+      return NextResponse.json({ error: 'Pedido no encontrado.' }, { status: 404 });
+    }
+
+    const isTakeaway = currentOrder.deliveryAddress === 'Retiro en local' || currentOrder.deliveryZone === '-';
+
+    // ==========================================================================
+    // LÓGICA CONDICIONAL: Validación de estados para Retiro en local
+    // ==========================================================================
+    if (isTakeaway && newStatus === 'EN_CAMINO') {
+      return NextResponse.json(
+        { error: 'El estado "En camino" no está permitido para pedidos de Retiro en local.' },
+        { status: 400 }
+      );
+    }
+
+    // Actualizamos el estado del pedido
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
-      data: { status: newStatus }, // Recibe el Enum: PENDIENTE, EN_PREPARACION, EN_CAMINO, etc.
+      data: { status: newStatus }, // Recibe el Enum: PENDIENTE, EN_PREPARACION, LISTO, EN_CAMINO, etc.
     });
+
+    const orderCode = `ORD-${String(currentOrder.orderNumber).padStart(4, '0')}`;
+    const cleanPhone = currentOrder.customerPhone.replace(/\D/g, '');
+    const waPhone = cleanPhone.startsWith('54') ? cleanPhone : `549${cleanPhone}`;
+
+    // ==========================================================================
+    // NUEVA LÓGICA DE WHATSAPP AUTOMÁTICO
+    // ==========================================================================
+    
+    // CASO 1: Es Retiro en local y el admin lo marca como LISTO
+    if (isTakeaway && newStatus === 'LISTO') {
+      const waMessageListo = `¡Hola ${currentOrder.customerName}! Te avisamos que tu pedido ya está *LISTO* para que pases a retirarlo por nuestro local. ¡Te esperamos!`;
+      await sendWhatsAppMessage(waPhone, waMessageListo);
+    }
+    
+    // CASO 2: Es Delivery y el admin lo marca como EN_CAMINO (Ejemplo opcional de Delivery)
+    if (!isTakeaway && newStatus === 'EN_CAMINO') {
+      const waMessageCamino = `¡Hola ${currentOrder.customerName}! Tu pedido ya está *EN CAMINO* hacia tu domicilio. ¡Prepara la mesa!`;
+      await sendWhatsAppMessage(waPhone, waMessageCamino);
+    }
 
     return NextResponse.json({ success: true, status: updatedOrder.status });
   } catch (error) {
@@ -74,8 +164,7 @@ export async function PATCH(request: Request) {
   }
 }
 
-// Agregá esta función al final de tu archivo src/app/api/admin/orders/route.ts
-
+// DELETE: Eliminar pedidos del historial
 export async function DELETE(request: Request) {
   try {
     const { orderIds } = await request.json();
@@ -87,8 +176,6 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Le decimos a Prisma que borre de la base de datos todos los pedidos
-    // cuyos IDs estén dentro del array que mandamos desde el frontend
     await prisma.order.deleteMany({
       where: {
         id: { in: orderIds },

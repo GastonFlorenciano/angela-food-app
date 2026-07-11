@@ -22,7 +22,7 @@ interface Order {
   deliveryZone: string;
   paymentMethod: string;
   notes?: string;
-  status: 'PENDIENTE' | 'EN_PREPARACION' | 'EN_CAMINO' | 'ENTREGADO' | 'CANCELADO';
+  status: 'PENDIENTE' | 'EN_PREPARACION' | 'LISTO' | 'EN_CAMINO' | 'ENTREGADO' | 'CANCELADO';
   total: number;
   createdAt: string;
   items: OrderItem[];
@@ -31,6 +31,7 @@ interface Order {
 const ORDER_STATUS_LABELS: Record<string, string> = {
   PENDIENTE: 'Pendiente',
   EN_PREPARACION: 'En cocina',
+  LISTO: 'Listo para retirar',
   EN_CAMINO: 'En camino',
   ENTREGADO: 'Entregado',
   CANCELADO: 'Cancelado'
@@ -39,18 +40,25 @@ const ORDER_STATUS_LABELS: Record<string, string> = {
 const ORDER_STATUS_COLORS: Record<string, string> = {
   PENDIENTE: 'bg-amber-100 text-amber-800 border-amber-200',
   EN_PREPARACION: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+  LISTO: 'bg-green-100 text-green-800 border-green-200',
   EN_CAMINO: 'bg-blue-100 text-blue-800 border-blue-200',
-  ENTREGADO: 'bg-green-100 text-green-800 border-green-200',
+  ENTREGADO: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   CANCELADO: 'bg-rose-100 text-rose-800 border-rose-200'
 };
 
-const NEXT_STATUS: Record<string, string | null> = {
-  PENDIENTE: 'EN_PREPARACION',
-  EN_PREPARACION: 'EN_CAMINO',
-  EN_CAMINO: 'ENTREGADO',
-  ENTREGADO: null,
-  CANCELADO: null
-};
+// Función para determinar el botón de "Siguiente estado" según tipo de pedido
+function getNextStatus(currentStatus: string, isTakeaway: boolean): string | null {
+  if (currentStatus === 'PENDIENTE') return 'EN_PREPARACION';
+  
+  if (currentStatus === 'EN_PREPARACION') {
+    return isTakeaway ? 'LISTO' : 'EN_CAMINO';
+  }
+  
+  if (currentStatus === 'LISTO' && isTakeaway) return 'ENTREGADO';
+  if (currentStatus === 'EN_CAMINO' && !isTakeaway) return 'ENTREGADO';
+  
+  return null;
+}
 
 function OrdersContent() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -64,7 +72,6 @@ function OrdersContent() {
   const searchParams = useSearchParams();
   const orderIdFromUrl = searchParams.get('orderId');
 
-  // Agregamos showSpinner para que no parpadee al hacer el polling
   async function loadOrders(showSpinner = true) {
     if (showSpinner) setLoading(true);
     try {
@@ -73,7 +80,6 @@ function OrdersContent() {
         const data = await res.json();
         setOrders(data);
         
-        // Si hay un modal abierto, actualizamos sus datos por si alguien más le cambió el estado
         setSelected(prevSelected => {
           if (!prevSelected) return null;
           const updatedOrder = data.find((o: Order) => o.id === prevSelected.id);
@@ -87,20 +93,16 @@ function OrdersContent() {
     }
   }
 
-  // Carga inicial y Polling automático
   useEffect(() => {
     loadOrders(true);
     const interval = setInterval(() => loadOrders(false), 10000);
     return () => clearInterval(interval);
   }, []);
 
-  // Escucha la URL y abre el modal si viene un ID
   useEffect(() => {
     if (orderIdFromUrl && orders.length > 0) {
       const foundOrder = orders.find(o => o.orderNumber === orderIdFromUrl);
-      if (foundOrder) {
-        setSelected(foundOrder);
-      }
+      if (foundOrder) setSelected(foundOrder);
     }
   }, [orderIdFromUrl, orders]);
 
@@ -115,6 +117,9 @@ function OrdersContent() {
       if (res.ok) {
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus as any } : o));
         if (selected?.id === orderId) setSelected(prev => prev ? { ...prev, status: newStatus as any } : null);
+      } else {
+        const errData = await res.json();
+        alert(errData.error || 'Error al actualizar el estado');
       }
     } catch (e) {
       console.error(e);
@@ -183,7 +188,7 @@ function OrdersContent() {
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mb-5">
-        {['TODOS', 'PENDIENTE', 'EN_PREPARACION', 'EN_CAMINO', 'ENTREGADO', 'CANCELADO'].map(status => {
+        {['TODOS', 'PENDIENTE', 'EN_PREPARACION', 'LISTO', 'EN_CAMINO', 'ENTREGADO', 'CANCELADO'].map(status => {
           const count = status === 'TODOS' ? orders.length : orders.filter(o => o.status === status).length;
           const label = status === 'TODOS' ? 'Todos' : ORDER_STATUS_LABELS[status];
           return (
@@ -235,52 +240,59 @@ function OrdersContent() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-cream-100 text-gray-700">
-                {filtered.map(order => (
-                  <tr key={order.id} className={`transition-colors ${selectedIds.includes(order.id) ? 'bg-cream-50/80' : 'hover:bg-cream-50/40'}`}>
-                    <td className="px-4 py-3 text-center">
-                      <input type="checkbox" className="rounded border-cream-300 text-forest-700 focus:ring-forest-700 w-4 h-4 cursor-pointer" checked={selectedIds.includes(order.id)} onChange={() => toggleSelection(order.id)} />
-                    </td>
-                    <td className="px-4 py-3 font-mono font-bold text-forest-700">{order.orderNumber}</td>
-                    <td className="px-4 py-3">
-                      <p className="font-bold text-forest-700">{order.customerName}</p>
-                      <p className="text-xs font-medium text-sage-400">{order.customerPhone}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="flex items-center gap-1 font-bold text-sage-500 text-xs">
-                        {order.deliveryAddress === 'Retiro en local' ? <><Store size={14} /> Retiro</> : <><Truck size={14} /> Delivery</>}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-black text-terracotta-500">${order.total.toLocaleString('es-AR')}</td>
-                    <td className="px-4 py-3">
-                      <Badge className={`${ORDER_STATUS_COLORS[order.status]} border px-2.5 py-0.5 rounded-full text-xs font-bold`}>
-                        {ORDER_STATUS_LABELS[order.status]}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 font-medium text-sage-500 text-xs">
-                      {new Date(order.createdAt).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1.5 items-center justify-end">
-                        <button onClick={() => setSelected(order)} className="p-1.5 text-sage-400 hover:text-forest-700 hover:bg-cream-100 rounded-lg transition-colors cursor-pointer" title="Ver detalle">
-                          <Eye size={16} />
-                        </button>
-                        {NEXT_STATUS[order.status] && (
-                          <Button size="sm" variant="primary" className="py-1 px-3 text-xs cursor-pointer" onClick={() => updateStatus(order.id, NEXT_STATUS[order.status]!)} loading={updating}>
-                            {ORDER_STATUS_LABELS[NEXT_STATUS[order.status]!]}
-                          </Button>
-                        )}
-                        {order.status !== 'CANCELADO' && order.status !== 'ENTREGADO' && (
-                          <Button size="sm" className="bg-red-100 hover:bg-red-200 text-red-700 py-1 px-3 text-xs font-bold transition-colors cursor-pointer" onClick={() => updateStatus(order.id, 'CANCELADO')} loading={updating}>
-                            Cancelar
-                          </Button>
-                        )}
-                        <button onClick={() => deleteOrders([order.id])} className="p-1.5 text-red-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-1 cursor-pointer" title="Eliminar">
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map(order => {
+                  const isTakeaway = order.deliveryAddress === 'Retiro en local' || order.deliveryZone === '-';
+                  const nextStatus = getNextStatus(order.status, isTakeaway);
+
+                  return (
+                    <tr key={order.id} className={`transition-colors ${selectedIds.includes(order.id) ? 'bg-cream-50/80' : 'hover:bg-cream-50/40'}`}>
+                      <td className="px-4 py-3 text-center">
+                        <input type="checkbox" className="rounded border-cream-300 text-forest-700 focus:ring-forest-700 w-4 h-4 cursor-pointer" checked={selectedIds.includes(order.id)} onChange={() => toggleSelection(order.id)} />
+                      </td>
+                      <td className="px-4 py-3 font-mono font-bold text-forest-700">{order.orderNumber}</td>
+                      <td className="px-4 py-3">
+                        <p className="font-bold text-forest-700">{order.customerName}</p>
+                        <p className="text-xs font-medium text-sage-400">{order.customerPhone}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="flex items-center gap-1 font-bold text-sage-500 text-xs">
+                          {isTakeaway ? <><Store size={14} /> Retiro</> : <><Truck size={14} /> Delivery</>}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-black text-terracotta-500">${order.total.toLocaleString('es-AR')}</td>
+                      <td className="px-4 py-3">
+                        <Badge className={`${ORDER_STATUS_COLORS[order.status]} border px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap`}>
+                          {ORDER_STATUS_LABELS[order.status]}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 font-medium text-sage-500 text-xs">
+                        {new Date(order.createdAt).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1.5 items-center justify-end">
+                          <button onClick={() => setSelected(order)} className="p-1.5 text-sage-400 hover:text-forest-700 hover:bg-cream-100 rounded-lg transition-colors cursor-pointer" title="Ver detalle">
+                            <Eye size={16} />
+                          </button>
+                          
+                          {nextStatus && (
+                            <Button size="sm" variant="primary" className="py-1 px-3 text-xs cursor-pointer whitespace-nowrap" onClick={() => updateStatus(order.id, nextStatus)} loading={updating}>
+                              {ORDER_STATUS_LABELS[nextStatus]}
+                            </Button>
+                          )}
+
+                          {order.status !== 'CANCELADO' && order.status !== 'ENTREGADO' && (
+                            <Button size="sm" className="bg-red-100 hover:bg-red-200 text-red-700 py-1 px-3 text-xs font-bold transition-colors cursor-pointer" onClick={() => updateStatus(order.id, 'CANCELADO')} loading={updating}>
+                              Cancelar
+                            </Button>
+                          )}
+                          <button onClick={() => deleteOrders([order.id])} className="p-1.5 text-red-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-1 cursor-pointer" title="Eliminar">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -290,15 +302,12 @@ function OrdersContent() {
       <Modal open={!!selected} onClose={() => { setSelected(null); window.history.replaceState(null, '', '/admin/orders'); }} title={`Detalle - Pedido ${selected?.orderNumber}`} size="lg">
         {selected && (
           <div className="space-y-4 ticket-imprimible print:bg-white print:text-black">
-            
-            {/* ENCABEZADO OCULTO QUE SOLO APARECE AL IMPRIMIR */}
             <div className="hidden print:block text-center mb-4 border-b border-black pb-4">
-              <h2 className="text-2xl font-black uppercase mb-1">Ángela</h2>
+              <h2 className="text-2xl font-black uppercase mb-1">Ángela Food</h2>
               <p className="text-sm font-bold">Comanda #{selected.orderNumber}</p>
               <p className="text-xs">{new Date(selected.createdAt).toLocaleString('es-AR')}</p>
             </div>
 
-            {/* BOTÓN DE IMPRIMIR - DESAPARECE AL IMPRIMIR */}
             <div className="flex justify-end no-imprimir">
               <Button onClick={() => window.print()} className="flex items-center gap-2 cursor-pointer bg-slate-800 hover:bg-slate-900 text-white shadow-sm">
                 <Printer size={16} />
@@ -330,22 +339,28 @@ function OrdersContent() {
               <p className="print:py-0.5"><span className="text-sage-400 font-semibold print:text-black">Notas especiales:</span> {selected.notes || '-'}</p>
             </div>
 
-            {/* BOTONES DE ESTADO - DESAPARECEN AL IMPRIMIR */}
             <div className="pt-2 no-imprimir">
               <h4 className="font-bold text-forest-700 text-xs uppercase tracking-wider mb-2 text-left">Cambiar estado manualmente</h4>
               <div className="flex flex-wrap gap-2">
-                {Object.keys(ORDER_STATUS_LABELS).map(statusKey => (
-                  <Button 
-                    key={statusKey} 
-                    size="sm" 
-                    variant={selected.status === statusKey ? 'primary' : 'outline'} 
-                    onClick={() => updateStatus(selected.id, statusKey)} 
-                    loading={updating}
-                    className='cursor-pointer'
-                  >
-                    {ORDER_STATUS_LABELS[statusKey]}
-                  </Button>
-                ))}
+                {Object.keys(ORDER_STATUS_LABELS).map(statusKey => {
+                  const isTakeawayModal = selected.deliveryAddress === 'Retiro en local' || selected.deliveryZone === '-';
+                  
+                  if (isTakeawayModal && statusKey === 'EN_CAMINO') return null;
+                  if (!isTakeawayModal && statusKey === 'LISTO') return null;
+
+                  return (
+                    <Button 
+                      key={statusKey} 
+                      size="sm" 
+                      variant={selected.status === statusKey ? 'primary' : 'outline'} 
+                      onClick={() => updateStatus(selected.id, statusKey)} 
+                      loading={updating}
+                      className='cursor-pointer'
+                    >
+                      {ORDER_STATUS_LABELS[statusKey]}
+                    </Button>
+                  );
+                })}
               </div>
             </div>
           </div>

@@ -16,6 +16,7 @@ enum Role {
 enum OrderStatus {
   PENDIENTE
   EN_PREPARACION
+  LISTO             // <- NUEVO ESTADO PARA RETIRO EN LOCAL
   EN_CAMINO
   ENTREGADO
   CANCELADO
